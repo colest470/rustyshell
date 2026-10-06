@@ -2,7 +2,7 @@
 use std::io::{self, Write};
 
 fn main() {
-    while 1 {
+    loop {
         repl();
     }
 }
@@ -15,5 +15,5 @@ fn repl() {
 
     io::stdin().read_line(&mut input).expect("No command entered");
 
-    print!("{}: command not found", input.trim());
+    print!("{}: command not found\n", input.trim());
 }
