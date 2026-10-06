@@ -12,9 +12,14 @@ fn main() {
 
         if input.trim() == "exit"{
             break;
-        }
+        } else if input.split_whitespace().next() == Some("echo") {
+            // let echo_string = String::new();
 
-        print!("{}: command not found\n", input.trim());
+            let output_echo_output: Vec<&str> = input.trim().split(" ").skip(1).collect();
+            println!("{}", output_echo_output.join(" "));
+        } else {
+            print!("{}: command not found\n", input.trim());
+        }
     }
 }
 
