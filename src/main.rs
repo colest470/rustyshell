@@ -9,5 +9,5 @@ fn main() {
 
     io::stdin().read_line(&mut input).expect("No command entered");
 
-    print!("{{{}}} command not found", input.trim());
+    print!("{}: command not found", input.trim());
 }
