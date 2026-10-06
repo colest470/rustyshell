@@ -3,17 +3,34 @@ use std::io::{self, Write};
 
 fn main() {
     loop {
-        repl();
+        print!("$ ");
+        io::stdout().flush().unwrap();
+
+        let mut input = String::new();
+
+        io::stdin().read_line(&mut input).expect("No command entered");
+
+        if input.trim() == "exit"{
+            break;
+        }
+
+        print!("{}: command not found\n", input.trim());
     }
 }
 
-fn repl() {
-    print!("$ ");
-    io::stdout().flush().unwrap();
+// fn repl()-> i8 {
+//     print!("$ ");
+//     io::stdout().flush().unwrap();
 
-    let mut input = String::new();
+//     let mut input = String::new();
 
-    io::stdin().read_line(&mut input).expect("No command entered");
+//     io::stdin().read_line(&mut input).expect("No command entered");
 
-    print!("{}: command not found\n", input.trim());
-}
+//     let something: i8 = 1;
+
+//     if input == "exit" {
+//         return something;
+//     }
+
+//     print!("{}: command not found\n", input.trim());
+// }
