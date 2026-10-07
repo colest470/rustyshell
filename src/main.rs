@@ -27,7 +27,9 @@ fn main() {
                 print!("{} is a shell builtin\n", command_string.trim());
             } else if is_executable(&(PathBuf::from("/usr/bin/").join(command_string))){
                 print!("{} is /usr/bin/{}\n", command_string.trim(), command_string.trim());
-            } else if is_executable(&(PathBuf::from("/tmp/dog/").join(command_string))){
+            }else if is_executable(&(PathBuf::from("/usr/dog/").join(command_string))){
+                print!("{} is /usr/bin/{}\n", command_string.trim(), command_string.trim());
+            }else if is_executable(&(PathBuf::from("/tmp/cow/").join(command_string))){
                 print!("{} is /usr/bin/{}\n", command_string.trim(), command_string.trim());
             } else {
                 print!("{}: not found\n", command_string.trim());
