@@ -21,6 +21,8 @@ fn main() {
 
             if command.contains(&"type") || command.contains(&"exit") || command.contains(&"echo") {
                 print!("{} is a shell builtin\n", command.trim());
+            } else {
+                print!("{}: not found");
             }
         } else {
             print!("{}: command not found\n", input.trim());
