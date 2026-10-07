@@ -1,5 +1,9 @@
 #[allow(unused_imports)]
 use std::io::{self, Write};
+use std::fs;
+use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
+use std::path::PathBuf;
 
 fn main() {
     loop {
@@ -17,16 +21,25 @@ fn main() {
             let output_echo_output: Vec<&str> = input.trim().split(" ").skip(1).collect();
             println!("{}", output_echo_output.join(" "));
         } else if input.split_whitespace().next() == Some("type") {
-            let command = input.trim().split(" ").collect::<Vec<_>>()[1];
+            let command_string = input.trim().split_whitespace().nth(1).unwrap_or("");
 
-            if command.contains(&"type") || command.contains(&"exit") || command.contains(&"echo") {
-                print!("{} is a shell builtin\n", command.trim());
+            if command_string.contains(&"type") || command_string.contains(&"exit") || command_string.contains(&"echo") {
+                print!("{} is a shell builtin\n", command_string.trim());
+            } else if is_executable(&(PathBuf::from("/usr/bin/").join(command_string))){
+                print!("{} is /usr/bin/{}\n", command_string.trim(), command_string.trim());
             } else {
-                print!("{}: not found\n", command.trim());
+                print!("{}: not found\n", command_string.trim());
             }
         } else {
             print!("{}: command not found\n", input.trim());
         }
+    }
+}
+
+fn is_executable(path: &Path) -> bool {
+    match fs::metadata(path) {
+        Ok(meta) => meta.permissions().mode() & 0o111 != 0,
+        Err(_) => false,
     }
 }
 
