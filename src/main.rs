@@ -13,10 +13,15 @@ fn main() {
         if input.trim() == "exit"{
             break;
         } else if input.split_whitespace().next() == Some("echo") {
-            // let echo_string = String::new();
 
             let output_echo_output: Vec<&str> = input.trim().split(" ").skip(1).collect();
             println!("{}", output_echo_output.join(" "));
+        } else if input.split_whitespace().next() == Some("type") {
+            let command = input.trim().split(" ").collect::<Vec<_>>()[1];
+
+            if command.contains(&"type") || command.contains(&"exit") || command.contains(&"echo") {
+                print!("{} is a shell builtin\n", command.trim());
+            }
         } else {
             print!("{}: command not found\n", input.trim());
         }
