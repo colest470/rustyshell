@@ -4,7 +4,7 @@ use faccess::PathExt;
 use pathsearch::PathSearcher;
 use std::env;
 use std::path::PathBuf;
-use std::Command;
+use std::process::Command;
 
 fn main() {
     loop {
