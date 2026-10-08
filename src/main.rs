@@ -2,6 +2,8 @@
 use std::io::{self, Write};
 use faccess::PathExt;
 use pathsearch::PathSearcher;
+use std::env;
+use std::path::PathBuf;
 
 fn main() {
     loop {
@@ -9,27 +11,26 @@ fn main() {
         io::stdout().flush().unwrap();
 
         let mut input = String::new();
-
         io::stdin().read_line(&mut input).expect("No command entered");
+        let input = input.trim();
 
-        if input.trim() == "exit"{
+        if input == "exit" {
             break;
         } else if input.split_whitespace().next() == Some("echo") {
-
-            let output_echo_output: Vec<&str> = input.trim().split(" ").skip(1).collect();
-            println!("{}", output_echo_output.join(" "));
+            let args: Vec<&str> = input.split_whitespace().skip(1).collect();
+            println!("{}", args.join(" "));
         } else if input.split_whitespace().next() == Some("type") {
-            let command_string = input.trim().split_whitespace().nth(1).unwrap_or("");
+            let command = input.split_whitespace().nth(1).unwrap_or("");
 
-            if command_string.contains(&"type") || command_string.contains(&"exit") || command_string.contains(&"echo") {
-                print!("{} is a shell builtin\n", command_string.trim());
-            } else if let Some(path) = find_in_path(command_string) {
-                println!("{} is {}", command_string, path.display());
+            if matches!(command, "type" | "exit" | "echo") {
+                println!("{} is a shell builtin", command);
+            } else if let Some(path) = find_in_path(command) {
+                println!("{} is {}", command, path.display());
             } else {
-                print!("{}: not found\n", command_string.trim());
+                println!("{}: not found", command);
             }
         } else {
-            print!("{}: command not found\n", input.trim());
+            println!("{}: command not found", input);
         }
     }
 }
