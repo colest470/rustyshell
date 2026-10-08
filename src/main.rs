@@ -55,17 +55,17 @@ fn find_in_path(command: &str) -> Option<PathBuf> {
     None
 }
 
-fn execute_file(path: &str) bool {
+fn execute_file(path: &str) {
     let mut child = Command::new(path)
         .args()
         .spawn()
         .expect("Error executing that file");
 
-    if child.ok {
-        return true;
-    }
+    // if child.ok {
+    //     return true;
+    // }
 
-    return false;
+    // return false;
 }
 
 // fn repl()-> i8 {
