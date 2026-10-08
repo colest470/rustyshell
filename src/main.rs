@@ -4,6 +4,7 @@ use faccess::PathExt;
 use pathsearch::PathSearcher;
 use std::env;
 use std::path::PathBuf;
+use std::Command
 
 fn main() {
     loop {
@@ -13,6 +14,10 @@ fn main() {
         let mut input = String::new();
         io::stdin().read_line(&mut input).expect("No command entered");
         let input = input.trim();
+
+        if input.trim().split("/")[0] == "." {
+            execute_file(input.trim());
+        }
 
         if input == "exit" {
             break;
@@ -48,6 +53,19 @@ fn find_in_path(command: &str) -> Option<PathBuf> {
     }
 
     None
+}
+
+fn execute_file(path: &str) bool {
+    let mut child = Command::new(path)
+        .args()
+        .spawn()
+        .expect("Error executing that file");
+
+    if child.ok {
+        return true;
+    }
+
+    return false;
 }
 
 // fn repl()-> i8 {
