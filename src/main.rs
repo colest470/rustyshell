@@ -2,8 +2,8 @@
 use std::io::{self, Write};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
-use std::path::PathBuf;
+use faccess::PathExt;
+use pathsearch::PathSearcher;
 
 fn main() {
     loop {
@@ -25,12 +25,8 @@ fn main() {
 
             if command_string.contains(&"type") || command_string.contains(&"exit") || command_string.contains(&"echo") {
                 print!("{} is a shell builtin\n", command_string.trim());
-            } else if is_executable(&(PathBuf::from("/usr/bin/").join(command_string))){
-                print!("{} is /usr/bin/{}\n", command_string.trim(), command_string.trim());
-            }else if is_executable(&(PathBuf::from("/usr/dog/").join(command_string))){
-                print!("{} is /usr/bin/{}\n", command_string.trim(), command_string.trim());
-            }else if is_executable(&(PathBuf::from("/tmp/cow/").join(command_string))){
-                print!("{} is /usr/bin/{}\n", command_string.trim(), command_string.trim());
+            } else if let Some(path) = find_in_path(command_string) {
+                println!("{} is {}", command_string, path.display());
             } else {
                 print!("{}: not found\n", command_string.trim());
             }
@@ -40,11 +36,19 @@ fn main() {
     }
 }
 
-fn is_executable(path: &Path) -> bool {
-    match fs::metadata(path) {
-        Ok(meta) => meta.permissions().mode() & 0o111 != 0,
-        Err(_) => false,
+fn find_in_path(command: &str) -> Option<PathBuf> {
+    let path = env::var_os("PATH");
+    let path_ext = env::var_os("PATHEXT");
+
+    let candidates = PathSearcher::new(command, path.as_deref(), path_ext.as_deref());
+
+    for candidate in candidates {
+        if candidate.is_file() && candidate.executable() {
+            return Some(candidate);
+        }
     }
+
+    None
 }
 
 // fn repl()-> i8 {
