@@ -1,7 +1,5 @@
 #[allow(unused_imports)]
 use std::io::{self, Write};
-use std::fs;
-use std::os::unix::fs::PermissionsExt;
 use faccess::PathExt;
 use pathsearch::PathSearcher;
 
