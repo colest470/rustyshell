@@ -39,7 +39,7 @@ fn main() {
             }
         } else {
             match find_in_path(command) {
-                Some(path) => execute_file(path.to_str().unwrap(), args),
+                Some(path) => execute_file(command, path.to_str().unwrap(), args),
                 None => println!("{}: command not found", command),
             }
         }
@@ -61,8 +61,9 @@ fn find_in_path(command: &str) -> Option<PathBuf> {
     None
 }
 
-fn execute_file(file_path: &str, args: &[&str]) {
+fn execute_file(command: &str, file_path: &str, args: &[&str]) {
     Command::new(file_path)
+        .arg0(file_path)
         .args(args)
         .status()
         .expect("Error executing that file");
