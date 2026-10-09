@@ -73,11 +73,10 @@ fn find_in_path(command: &str) -> Option<PathBuf> {
 }
 
 fn execute_file(file_path: &str, args: &[&str]) {
-    println!("Program was passed {} args (including program name).", );
-    // Command::new(file_path)
-    //     .args(args)
-    //     .spawn()
-    //     .expect("Error executing that file");
+    Command::new(file_path)
+        .args(args)
+        .spawn()
+        .expect("Error executing that file");
 
     // if child.ok {
     //     return true;
