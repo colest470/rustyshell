@@ -25,7 +25,7 @@ fn main() {
         let args = &parts[1..];
 
         match command {
-            "exit" => break;
+            "exit" => break,
             "type" => {
                 let target = args.first().copied().unwrap_or("");
 
