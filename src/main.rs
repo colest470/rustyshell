@@ -15,6 +15,14 @@ fn main() {
         io::stdin().read_line(&mut input).expect("No command entered");
         let input = input.trim();
 
+        if input.is_empty() {
+            continue;
+        }
+
+        let parts: Vec<&str> = input.split_whitespace().collect();
+        let command = parts[0];
+        let args = &parts[1..];
+
         // if input.trim().split("/").collect::<Vec<_>>()[0] == "." {
         //     let file_path = input.trim().split_whitespace().collect::<Vec<_>>()[0];
 
