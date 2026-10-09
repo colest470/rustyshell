@@ -64,7 +64,7 @@ fn find_in_path(command: &str) -> Option<PathBuf> {
 
 fn execute_file(command: &str, file_path: &str, args: &[&str]) {
     Command::new(file_path)
-        .arg0(file_path)
+        .arg0(command)
         .args(args)
         .status()
         .expect("Error executing that file");
