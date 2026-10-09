@@ -24,22 +24,20 @@ fn main() {
         let command = parts[0];
         let args = &parts[1..];
 
-        if command == "exit" {
-            break;
-        } else if command == "echo" {
-            println!("{}", args.join(" "));
-        } else if command == "type" {
-            let target = args.first().copied().unwrap_or("");
+        match command {
+            "exit" => break;
+            "type" => {
+                let target = args.first().copied().unwrap_or("");
 
-            if matches!(target, "type" | "exit" | "echo") {
-                println!("{} is a shell builtin", target);
-            } else if let Some(path) = find_in_path(target) {
-                println!("{} is {}", target, path.display());
-            } else {
-                println!("{}: not found", target);
+                if matches!(target, "type" | "exit" | "echo") {
+                    println!("{} is a shell builtin", target);
+                } else if let Some(path) = find_in_path(target) {
+                    println!("{} is {}", target, path.display());
+                } else {
+                    println!("{}: not found", target);
+                }
             }
-        } else {
-            match find_in_path(command) {
+            _ => match find_in_path(command) {
                 Some(path) => execute_file(command, path.to_str().unwrap(), args),
                 None => println!("{}: command not found", command),
             }
