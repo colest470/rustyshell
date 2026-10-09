@@ -23,36 +23,25 @@ fn main() {
         let command = parts[0];
         let args = &parts[1..];
 
-        // if input.trim().split("/").collect::<Vec<_>>()[0] == "." {
-        //     let file_path = input.trim().split_whitespace().collect::<Vec<_>>()[0];
-
-        //     let parts = input.trim().split_whitespace().collect::<Vec<_>>();
-
-        //     let args = &parts[1..];
-
-        //     execute_file(file_path, args);
-        if input == "exit" {
+        if command == "exit" {
             break;
-        } else if input.split_whitespace().next() == Some("echo") {
-            let args: Vec<&str> = input.split_whitespace().skip(1).collect();
+        } else if command == "echo" {
             println!("{}", args.join(" "));
-        } else if input.split_whitespace().next() == Some("type") {
-            let command = input.split_whitespace().nth(1).unwrap_or("");
+        } else if command == "type" {
+            let target = args.first().copied().unwrap_or("");
 
-            if matches!(command, "type" | "exit" | "echo") {
-                println!("{} is a shell builtin", command);
-            } else if let Some(path) = find_in_path(command) {
-                println!("{} is {}", command, path.display());
+            if matches!(target, "type" | "exit" | "echo") {
+                println!("{} is a shell builtin", target);
+            } else if let Some(path) = find_in_path(target) {
+                println!("{} is {}", target, path.display());
             } else {
-                println!("{}: not found", command);
+                println!("{}: not found", target);
             }
         } else {
             match find_in_path(command) {
                 Some(path) => execute_file(path.to_str().unwrap(), args),
                 None => println!("{}: command not found", command),
             }
-
-            println!("{}: command not found", input);
         }
     }
 }
@@ -75,31 +64,6 @@ fn find_in_path(command: &str) -> Option<PathBuf> {
 fn execute_file(file_path: &str, args: &[&str]) {
     Command::new(file_path)
         .args(args)
-        .spawn()
+        .status()
         .expect("Error executing that file");
-
-    // if child.ok {
-    //     return true;
-    // }
-
-    // return false;
-}
-
-fn find_executable(name: &str) -> Option<PathBuf> {
-    if name.contains('/') {
-        let p = Path::new(name);
-        return if p.is_file() && is_executable(p) {
-            Some(p.to_path_buf())
-        } else {
-            None
-        };
-    }
-    let path = env::var_os("PATH")?;
-    for dir in env::split_paths(&path) {
-        let candidate = dir.join(name);
-        if candidate.is_file() && is_executable(&candidate) {
-            return Some(candidate);
-        }
-    }
-    None
 }
