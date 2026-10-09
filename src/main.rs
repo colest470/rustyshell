@@ -15,16 +15,15 @@ fn main() {
         io::stdin().read_line(&mut input).expect("No command entered");
         let input = input.trim();
 
-        if input.trim().split("/").collect::<Vec<_>>()[0] == "." {
+        // if input.trim().split("/").collect::<Vec<_>>()[0] == "." {
+        //     let file_path = input.trim().split_whitespace().collect::<Vec<_>>()[0];
 
-            let file_path = input.trim().split_whitespace().collect::<Vec<_>>()[0];
+        //     let parts = input.trim().split_whitespace().collect::<Vec<_>>();
 
-            let parts = input.trim().split_whitespace().collect::<Vec<_>>();
+        //     let args = &parts[1..];
 
-            let args = &parts[1..];
-
-            execute_file(file_path, args);
-        } else if input == "exit" {
+        //     execute_file(file_path, args);
+        if input == "exit" {
             break;
         } else if input.split_whitespace().next() == Some("echo") {
             let args: Vec<&str> = input.split_whitespace().skip(1).collect();
@@ -40,6 +39,11 @@ fn main() {
                 println!("{}: not found", command);
             }
         } else {
+            match find_in_path(command) {
+                Some(path) => execute_file(path.to_str().unwrap(), args),
+                None => println!("{}: command not found", command),
+            }
+
             println!("{}: command not found", input);
         }
     }
@@ -61,10 +65,11 @@ fn find_in_path(command: &str) -> Option<PathBuf> {
 }
 
 fn execute_file(file_path: &str, args: &[&str]) {
-    Command::new(file_path)
-        .args(args)
-        .spawn()
-        .expect("Error executing that file");
+    println!("Program was passed {} args (including program name).", );
+    // Command::new(file_path)
+    //     .args(args)
+    //     .spawn()
+    //     .expect("Error executing that file");
 
     // if child.ok {
     //     return true;
@@ -73,19 +78,21 @@ fn execute_file(file_path: &str, args: &[&str]) {
     // return false;
 }
 
-// fn repl()-> i8 {
-//     print!("$ ");
-//     io::stdout().flush().unwrap();
-
-//     let mut input = String::new();
-
-//     io::stdin().read_line(&mut input).expect("No command entered");
-
-//     let something: i8 = 1;
-
-//     if input == "exit" {
-//         return something;
-//     }
-
-//     print!("{}: command not found\n", input.trim());
-// }
+fn find_executable(name: &str) -> Option<PathBuf> {
+    if name.contains('/') {
+        let p = Path::new(name);
+        return if p.is_file() && is_executable(p) {
+            Some(p.to_path_buf())
+        } else {
+            None
+        };
+    }
+    let path = env::var_os("PATH")?;
+    for dir in env::split_paths(&path) {
+        let candidate = dir.join(name);
+        if candidate.is_file() && is_executable(&candidate) {
+            return Some(candidate);
+        }
+    }
+    None
+}
