@@ -15,11 +15,16 @@ fn main() {
         io::stdin().read_line(&mut input).expect("No command entered");
         let input = input.trim();
 
-        if input.trim().split("/")[0] == "." {
-            execute_file(input.trim());
-        }
+        if input.trim().split("/").collect::<Vec<_>>()[0] == "." {
 
-        if input == "exit" {
+            let file_path = input.trim().split_whitespace().collect::<Vec<_>>()[0];
+
+            let parts = input.trim().split_whitespace().collect::<Vec<_>>();
+
+            let args = &parts[1..];
+
+            execute_file(file_path, args);
+        } else if input == "exit" {
             break;
         } else if input.split_whitespace().next() == Some("echo") {
             let args: Vec<&str> = input.split_whitespace().skip(1).collect();
@@ -55,9 +60,9 @@ fn find_in_path(command: &str) -> Option<PathBuf> {
     None
 }
 
-fn execute_file(path: &str) {
-    let mut child = Command::new(path)
-        .args()
+fn execute_file(file_path: &str, args: &[&str]) {
+    Command::new(file_path)
+        .args(args)
         .spawn()
         .expect("Error executing that file");
 
