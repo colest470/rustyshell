@@ -16,7 +16,6 @@ pub fn find_in_path(command: &str) -> Option<PathBuf> {
             return Some(candidate);
         }
     }
-
     None
 }
 

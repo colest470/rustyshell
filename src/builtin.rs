@@ -12,22 +12,28 @@ pub fn builtins (args: &[&str]) {
     }
 }
 
-// pub fn echo(args: &[&str]) {
-//     // initial implementation
-//     println!("{}", args.join(" "));
+pub fn echo(args: &[&str]) {
+    // initial implementation
+    println!("{}", args.join(" "));
 
-//     let final_echo: str = String::new("");
-//     for element in &args {
-//         if element.starts_with("'") && element.ends_with("'") {
-//             final_echo += " " + &element[1..&element.len() - 1];
-//         } 
+    let mut final_echo = String::new();
 
-//         for (i, character) in &final_echo {
-//             if character == "'" && &final_echo[i+1] == "'"{
-//                 final_echo =
-//             }
-//         }
-//     } 
+    for element in args {
+        if element.starts_with("'") && element.ends_with("'") {
+            final_echo = final_echo + " " + &element[1..&element.len() - 1];
+        } 
 
-//     println!(final_echo);
-// }
+        // for (i, character) in &final_echo {
+        //     if character == "'" && &final_echo[i+1] == "'"{
+        //         final_echo = final_echo + final_echo[...i-1];
+        //         // final_echo = final_echo + final_echo[i-1...i+1];
+
+        //         continue;
+        //     }
+
+        //     final_echo += 
+        // }
+    } 
+
+    println!("{}", final_echo);
+}

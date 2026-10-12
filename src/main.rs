@@ -10,9 +10,8 @@ fn main() {
 
         let mut input = String::new();
         io::stdin().read_line(&mut input).expect("No command entered");
-        let input = input.trim();
 
-        if input.is_empty() {
+        if input.trim().is_empty() {
             continue;
         }
 
