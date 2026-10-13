@@ -1,4 +1,6 @@
-use crate::exec::find_in_path;
+use crate::exec::{find_in_path};
+use std::fs::File;
+use std::io::{self, BufRead, BufReader, Write};
 
 pub fn builtins (args: &[&str]) {
     let target = args.first().copied().unwrap_or("");
@@ -14,7 +16,10 @@ pub fn builtins (args: &[&str]) {
 
 pub fn echo(args: &mut [&str]) {
     // Remove the trailing newline from the last element
-    args = remove_trailing_new_line(args)
+    let args_length = args.len();
+    let mut last_element = args[args_length - 1];
+    last_element = &last_element[..last_element.len() - 1];
+    args[args_length - 1] = last_element;
 
     let input = args.join(" ");
     
@@ -49,15 +54,88 @@ pub fn echo(args: &mut [&str]) {
     println!("{}", result);
 }
 
-pub fn cat() {
+pub fn cat<'a>(mut args: &'a mut [&'a str]) {
+    args = remove_trailing_new_line(args);
 
+    let full_args = args.join(" ");
+    let unquoted_args = unquote(&full_args);
+
+    let stdout = io::stdout();
+    let mut out = stdout.lock();
+
+    for argument in unquoted_args {
+        let filename = argument.trim();
+        if filename.is_empty() {
+            continue;
+        }
+
+        let path = match find_in_path(filename) {
+            Some(p) => p,
+            None => {
+                eprintln!("cat: {}: No such file or directory", filename);
+                continue;
+            }
+        };
+
+        match File::open(&path) {
+            Ok(file) => {
+                let reader = BufReader::new(file);
+                for line in reader.lines() {
+                    match line {
+                        Ok(l) => {
+                            if let Err(e) = writeln!(out, "{}", l) {
+                                if e.kind() == io::ErrorKind::BrokenPipe {
+                                    return;
+                                }
+                                eprintln!("cat: {}", e);
+                                return;
+                            }
+                        }
+                        Err(e) => eprintln!("cat: {}: {}", filename, e),
+                    }
+                }
+            }
+            Err(e) => eprintln!("cat: {}: {}", filename, e),
+        }
+    }
 }
 
-pb fn remove_trailing_new_line (args: &mut [&str])-> &mut [&str] {
-    let args_length = args.len();
-    let mut last_element = args[args_length - 1];
+
+pub fn remove_trailing_new_line<'a>(args: &'a mut [&'a str])-> &'a mut [&'a str] {
+    let args_length: usize = args.len();
+    let mut last_element: &str = args[args_length - 1];
     last_element = &last_element[..last_element.len() - 1];
     args[args_length - 1] = last_element;
 
     return args;
+}
+
+
+pub fn unquote<'a>(arg: &'a str) -> Vec<&'a str> {
+    let mut result: Vec<&'a str> = Vec::new();
+    let mut in_quotes = false;
+    let mut segment_start = 0usize;
+
+    for (i, ch) in arg.char_indices() {
+        match ch {
+            '\'' => {
+                let segment = &arg[segment_start..i];
+                if !segment.is_empty() {
+                    result.push(segment);
+                }
+                in_quotes = !in_quotes;
+                segment_start = i + 1;
+            }
+            _ => {}
+        }
+    }
+
+    if segment_start < arg.len() {
+        let segment = &arg[segment_start..];
+        if !segment.is_empty() {
+            result.push(segment);
+        }
+    }
+
+    result
 }
