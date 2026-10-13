@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{self, Write};
 
 use crate::exec::{find_in_path};
-use crate::helpers::{remove_trailing_new_line, unquote};
+use crate::helpers::{remove_trailing_new_line, unquote}; // this has an error
 
 pub fn builtins (args: &[&str]) {
     let target = args.first().copied().unwrap_or("");
