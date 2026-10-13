@@ -19,10 +19,16 @@ fn main() {
         let command = parts[0];
         let args = &parts[1..];
 
+        // 1. Make the vector mutable so we can take mutable slices from it
+        let mut parts_echo: Vec<&str> = input.split(' ').collect();
+
         match command {
             "exit" => break,
             "type" => builtin::builtins(args),
-            "echo" => builtin::echo(args),
+            "echo" => {
+                let args_echo = &mut parts_echo[1..];
+                builtin::echo(args_echo);
+            }
             _ => match exec::find_in_path(command) {
                 Some(path) => exec::execute_file(command, path.to_str().unwrap(), args),
                 None => println!("{}: command not found", command),
