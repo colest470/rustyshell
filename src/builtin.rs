@@ -1,7 +1,6 @@
 use crate::exec::{find_in_path};
 use std::fs::File;
-use std::io::{self, BufRead, BufReader, Write};
-use std::path::Path;
+use std::io::{self, Read, Write};
 
 pub fn builtins (args: &[&str]) {
     let target = args.first().copied().unwrap_or("");
