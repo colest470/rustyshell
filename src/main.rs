@@ -29,6 +29,10 @@ fn main() {
                 let args_echo = &mut parts_echo[1..];
                 builtin::echo(args_echo);
             }
+            "cat" => {
+                let args_echo = &mut parts_echo[1..];
+                builtin::cat(args_echo);
+            }
             _ => match exec::find_in_path(command) {
                 Some(path) => exec::execute_file(command, path.to_str().unwrap(), args),
                 None => println!("{}: command not found", command),

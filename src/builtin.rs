@@ -14,10 +14,7 @@ pub fn builtins (args: &[&str]) {
 
 pub fn echo(args: &mut [&str]) {
     // Remove the trailing newline from the last element
-    let args_length = args.len();
-    let mut last_element = args[args_length - 1];
-    last_element = &last_element[..last_element.len() - 1];
-    args[args_length - 1] = last_element;
+    args = remove_trailing_new_line(args)
 
     let input = args.join(" ");
     
@@ -50,4 +47,17 @@ pub fn echo(args: &mut [&str]) {
     }
     
     println!("{}", result);
+}
+
+pub fn cat() {
+
+}
+
+pb fn remove_trailing_new_line (args: &mut [&str])-> &mut [&str] {
+    let args_length = args.len();
+    let mut last_element = args[args_length - 1];
+    last_element = &last_element[..last_element.len() - 1];
+    args[args_length - 1] = last_element;
+
+    return args;
 }
