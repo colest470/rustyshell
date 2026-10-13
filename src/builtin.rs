@@ -55,6 +55,9 @@ pub fn echo(args: &mut [&str]) {
     println!("{}", result);
 }
 
+use std::fs::File;
+use std::io::{self, Read, Write};
+
 pub fn cat<'a>(mut args: &'a mut [&'a str]) {
     args = remove_trailing_new_line(args);
 
@@ -70,28 +73,20 @@ pub fn cat<'a>(mut args: &'a mut [&'a str]) {
             continue;
         }
 
-        // Open directly — no PATH search. cat opens files relative to CWD.
-        match File::open(Path::new(filename)) {
-            Ok(file) => {
-                let reader = BufReader::new(file);
-                for line in reader.lines() {
-                    match line {
-                        Ok(l) => {
-                            if let Err(e) = writeln!(out, "{}", l) {
-                                if e.kind() == io::ErrorKind::BrokenPipe {
-                                    return;
-                                }
-                                eprintln!("cat: {}", e);
-                                return;
-                            }
-                        }
-                        Err(e) => eprintln!("cat: {}: {}", filename, e),
+        match File::open(filename) {
+            Ok(mut file) => {
+                if let Err(e) = io::copy(&mut file, &mut out) {
+                    if e.kind() == io::ErrorKind::BrokenPipe {
+                        return;
                     }
+                    eprintln!("cat: {}: {}", filename, e);
                 }
             }
             Err(e) => eprintln!("cat: {}: {}", filename, e),
         }
     }
+
+    let _ = out.flush();
 }
 
 pub fn remove_trailing_new_line<'a>(args: &'a mut [&'a str])-> &'a mut [&'a str] {
