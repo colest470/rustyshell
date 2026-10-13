@@ -1,4 +1,5 @@
 
+
 pub fn remove_trailing_new_line<'a>(args: &'a mut [&'a str])-> &'a mut [&'a str] {
     let args_length: usize = args.len();
     let mut last_element: &str = args[args_length - 1];
@@ -8,24 +9,32 @@ pub fn remove_trailing_new_line<'a>(args: &'a mut [&'a str])-> &'a mut [&'a str]
     return args;
 }
 
-pub fn unquote(arg: &str) -> String {
-    let mut result = String::new();
-    let mut in_quotes = false;
 
-    for ch in arg.chars() {
+pub fn unquote<'a>(arg: &'a str) -> Vec<&'a str> {
+    let mut result: Vec<&'a str> = Vec::new();
+    let mut in_quotes = false;
+    let mut segment_start = 0usize;
+
+    for (i, ch) in arg.char_indices() {
         match ch {
-            '\'' => in_quotes = !in_quotes,
-            _ => {
-                if in_quotes {
-                    result.push(ch);
+            '\'' => {
+                let segment = &arg[segment_start..i];
+                if !segment.is_empty() {
+                    result.push(segment);
                 }
+                in_quotes = !in_quotes;
+                segment_start = i + 1;
             }
+            _ => {}
         }
     }
 
-    if !arg.contains('\'') {
-        return arg.to_string();
+    if segment_start < arg.len() {
+        let segment = &arg[segment_start..];
+        if !segment.is_empty() {
+            result.push(segment);
+        }
     }
 
-    return result;
+    result
 }
