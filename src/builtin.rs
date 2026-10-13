@@ -1,6 +1,7 @@
 use crate::exec::{find_in_path};
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Write};
+use std::path::Path;
 
 pub fn builtins (args: &[&str]) {
     let target = args.first().copied().unwrap_or("");
@@ -69,15 +70,8 @@ pub fn cat<'a>(mut args: &'a mut [&'a str]) {
             continue;
         }
 
-        let path = match find_in_path(filename) {
-            Some(p) => p,
-            None => {
-                eprintln!("cat: {}: No such file or directory", filename);
-                continue;
-            }
-        };
-
-        match File::open(&path) {
+        // Open directly — no PATH search. cat opens files relative to CWD.
+        match File::open(Path::new(filename)) {
             Ok(file) => {
                 let reader = BufReader::new(file);
                 for line in reader.lines() {
@@ -99,7 +93,6 @@ pub fn cat<'a>(mut args: &'a mut [&'a str]) {
         }
     }
 }
-
 
 pub fn remove_trailing_new_line<'a>(args: &'a mut [&'a str])-> &'a mut [&'a str] {
     let args_length: usize = args.len();
