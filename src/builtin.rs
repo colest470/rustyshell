@@ -54,9 +54,6 @@ pub fn echo(args: &mut [&str]) {
     println!("{}", result);
 }
 
-use std::fs::File;
-use std::io::{self, Read, Write};
-
 pub fn cat<'a>(mut args: &'a mut [&'a str]) {
     args = remove_trailing_new_line(args);
 
