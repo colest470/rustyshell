@@ -1,4 +1,4 @@
-pub fn remove_trailing_new_line<'a>(args: &'a mut [&'a str])-> &'a mut [&'a str] {
+pub fn remove_trailing_new_line<'a, 'b>(args: &'a mut [&'b str]) -> &'a mut [&'b str] {
     let args_length: usize = args.len();
     let mut last_element: &str = args[args_length - 1];
     last_element = &last_element[..last_element.len() - 1];
@@ -8,30 +8,38 @@ pub fn remove_trailing_new_line<'a>(args: &'a mut [&'a str])-> &'a mut [&'a str]
 }
 
 
-pub fn unquote<'a>(arg: &'a str) -> Vec<&'a str> {
-    let mut result: Vec<&'a str> = Vec::new();
-    let mut in_quotes = false;
-    let mut segment_start = 0usize;
+pub fn unquote(arg: &str) -> Vec<String> {
+    let mut result: Vec<String> = Vec::new();
+    let mut current = String::new();
+    let mut in_single_quotes = false;
+    let mut in_double_quotes = false;
+    let mut has_content = false; 
 
-    for (i, ch) in arg.char_indices() {
+    for ch in arg.chars() {
         match ch {
-            '\'' => {
-                let segment = &arg[segment_start..i];
-                if !segment.is_empty() {
-                    result.push(segment);
-                }
-                in_quotes = !in_quotes;
-                segment_start = i + 1;
+            '\'' if !in_double_quotes => {
+                in_single_quotes = !in_single_quotes;
+                has_content = true;
             }
-            _ => {}
+            '"' if !in_single_quotes => {
+                in_double_quotes = !in_double_quotes;
+                has_content = true;
+            }
+            ' ' | '\t' if !in_single_quotes && !in_double_quotes => {
+                if has_content {
+                    result.push(std::mem::take(&mut current));
+                    has_content = false;
+                }
+            }
+            _ => {
+                current.push(ch);
+                has_content = true;
+            }
         }
     }
 
-    if segment_start < arg.len() {
-        let segment = &arg[segment_start..];
-        if !segment.is_empty() {
-            result.push(segment);
-        }
+    if has_content {
+        result.push(current);
     }
 
     result

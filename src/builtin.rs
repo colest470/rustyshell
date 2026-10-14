@@ -31,39 +31,31 @@ pub fn echo(args: &mut [&str]) {
     args[args_length - 1] = last_element;
 
     let input = args.join(" ");
-    
     let mut result = String::new();
-    let mut chars = input.chars().peekable();
     let mut in_single_quotes = false;
     let mut in_double_quotes = false;
-    
-    while let Some(ch) = chars.next() {
+    let mut last_was_space = false;
+
+    for ch in input.chars() {
         match ch {
-            '\'' if !in_double_quotes => {
-                in_single_quotes = !in_single_quotes;
-            }
-            '"' if !in_single_quotes => {
-                in_double_quotes = !in_double_quotes;
-            }
-            ' ' => {
-                if in_single_quotes || in_double_quotes {
-                    result.push(ch);
-                } else {
-                    if !result.ends_with(' ') && !result.is_empty() {
-                        result.push(' ');
-                    }
+            '\'' if !in_double_quotes => in_single_quotes = !in_single_quotes,
+            '"' if !in_single_quotes => in_double_quotes = !in_double_quotes,
+            ' ' if !in_single_quotes && !in_double_quotes => {
+                if !last_was_space && !result.is_empty() {
+                    result.push(' ');
                 }
+                last_was_space = true;
+                continue;
             }
-            _ => {
-                result.push(ch);
-            }
+            _ => result.push(ch),
         }
+        last_was_space = false;
     }
-    
+
     println!("{}", result);
 }
 
-pub fn cat<'a>(mut args: &'a mut [&'a str]) {
+pub fn cat(mut args: &mut [&str]) {
     args = remove_trailing_new_line(args);
 
     let full_args = args.join(" ");
@@ -72,8 +64,8 @@ pub fn cat<'a>(mut args: &'a mut [&'a str]) {
     let stdout = io::stdout();
     let mut out = stdout.lock();
 
-    for argument in unquoted_args {
-        let filename = argument.trim();
+    for filename in unquoted_args {
+        let filename = filename.trim();
         if filename.is_empty() {
             continue;
         }
