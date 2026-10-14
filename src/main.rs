@@ -20,7 +20,6 @@ fn main() {
         let command = parts[0];
         let args = &parts[1..];
 
-        // 1. Make the vector mutable so we can take mutable slices from it
         let mut parts_echo: Vec<&str> = input.split(' ').collect();
 
         match command {
