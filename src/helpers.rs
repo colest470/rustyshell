@@ -11,21 +11,36 @@ pub fn remove_trailing_new_line<'a, 'b>(args: &'a mut [&'b str]) -> &'a mut [&'b
 pub fn unquote(arg: &str) -> Vec<String> {
     let mut result: Vec<String> = Vec::new();
     let mut current = String::new();
-    let mut in_single_quotes = false;
-    let mut in_double_quotes = false;
-    let mut has_content = false; 
+    let mut in_single = false;
+    let mut in_double = false;
+    let mut has_content = false;
+    let mut chars = arg.chars().peekable();
 
-    for ch in arg.chars() {
+    while let Some(ch) = chars.next() {
         match ch {
-            '\'' if !in_double_quotes => {
-                in_single_quotes = !in_single_quotes;
+            '\'' if !in_double => {
+                in_single = !in_single;
                 has_content = true;
             }
-            '"' if !in_single_quotes => {
-                in_double_quotes = !in_double_quotes;
+            '"' if !in_single => {
+                in_double = !in_double;
                 has_content = true;
             }
-            ' ' | '\t' if !in_single_quotes && !in_double_quotes => {
+            '\\' if !in_single => {
+                if let Some(next) = chars.next() {
+                    if in_double && !matches!(next, '"' | '\\' | '$' | '`' | '\n') {
+                        current.push('\\');
+                        current.push(next);
+                    } else {
+                        current.push(next);
+                    }
+                    has_content = true;
+                } else {
+                    current.push('\\');
+                    has_content = true;
+                }
+            }
+            ' ' | '\t' if !in_single && !in_double => {
                 if has_content {
                     result.push(std::mem::take(&mut current));
                     has_content = false;

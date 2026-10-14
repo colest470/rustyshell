@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{self, Write};
 
 use crate::exec::{find_in_path};
-use crate::helpers::{remove_trailing_new_line, unquote}; // this has an error
+use crate::helpers::{remove_trailing_new_line, unquote};
 
 pub fn builtins (args: &[&str]) {
     let target = args.first().copied().unwrap_or("");
@@ -17,16 +17,15 @@ pub fn builtins (args: &[&str]) {
 }
 
 pub fn echo(args: &mut [&str]) {
-    // Remove the trailing newline from the last element
     let args_length = args.len();
     if args_length == 0 {
         println!();
         return;
     }
-    
+
     let mut last_element = args[args_length - 1];
-    if last_element.ends_with('\n') {
-        last_element = &last_element[..last_element.len() - 1];
+    if let Some(stripped) = last_element.strip_suffix('\n') {
+        last_element = stripped;
     }
     args[args_length - 1] = last_element;
 
@@ -35,28 +34,52 @@ pub fn echo(args: &mut [&str]) {
     let mut in_single_quotes = false;
     let mut in_double_quotes = false;
     let mut last_was_space = false;
+    let mut chars = input.chars().peekable();
 
-    for ch in input.chars() {
+    while let Some(ch) = chars.next() {
         match ch {
-            '\'' if !in_double_quotes => in_single_quotes = !in_single_quotes,
-            '"' if !in_single_quotes => in_double_quotes = !in_double_quotes,
-            ' ' if !in_single_quotes && !in_double_quotes => {
+            '\'' if !in_double_quotes => {
+                in_single_quotes = !in_single_quotes;
+                last_was_space = false;
+            }
+            '"' if !in_single_quotes => {
+                in_double_quotes = !in_double_quotes;
+                last_was_space = false;
+            }
+            '\\' if !in_single_quotes => {
+                match chars.next() {
+                    Some(next_ch) => {
+                        if in_double_quotes
+                            && !matches!(next_ch, '"' | '\\' | '$' | '`' | '\n')
+                        {
+                            result.push('\\');
+                            result.push(next_ch);
+                        } else {
+                            result.push(next_ch);
+                        }
+                    }
+                    None => result.push('\\'),
+                }
+                last_was_space = false;
+            }
+            ' ' | '\t' if !in_single_quotes && !in_double_quotes => {
                 if !last_was_space && !result.is_empty() {
                     result.push(' ');
                 }
                 last_was_space = true;
-                continue;
             }
-            _ => result.push(ch),
+            _ => {
+                result.push(ch);
+                last_was_space = false;
+            }
         }
-        last_was_space = false;
     }
 
     println!("{}", result);
 }
 
-pub fn cat(mut args: &mut [&str]) {
-    args = remove_trailing_new_line(args);
+pub fn cat(args: &mut [&str]) {
+    remove_trailing_new_line(args);
 
     let full_args = args.join(" ");
     let unquoted_args = unquote(&full_args);
