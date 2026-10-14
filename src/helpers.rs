@@ -1,5 +1,3 @@
-
-
 pub fn remove_trailing_new_line<'a>(args: &'a mut [&'a str])-> &'a mut [&'a str] {
     let args_length: usize = args.len();
     let mut last_element: &str = args[args_length - 1];
