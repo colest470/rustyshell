@@ -168,16 +168,30 @@ pub fn ls(args: &mut [&str]) {
     let mut out = stdout.lock();
     execute_ls(args, &mut out);
 }
-
 fn execute_ls(args: &[&str], out: &mut impl Write) {
-    let unquoted_args = unquote(&args.join(" "));
+    let full_args_str = args.join(" ");
+    let unquoted_args = unquote(&full_args_str);
 
-    for filename in unquoted_args {
-        let filename = filename.trim();
-        if filename.is_empty() {
+    let mut target_paths: Vec<String> = Vec::new();
+
+    for arg in unquoted_args {
+        let trimmed = arg.trim();
+        if trimmed.is_empty() {
             continue;
         }
 
+        if trimmed.starts_with('-') {
+            continue;
+        }
+
+        target_paths.push(trimmed.to_string());
+    }
+
+    if target_paths.is_empty() {
+        target_paths.push(".".to_string());
+    }
+
+    for filename in &target_paths {
         match fs::read_dir(filename) {
             Ok(entries) => {
                 for entry in entries {
