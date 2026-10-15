@@ -149,7 +149,7 @@ pub fn ls(args: &mut [&str]) {
             let result = write_files(content.as_str(), file_name); // result : io::Result<()>
             match result {
                 Ok(_) => {
-                    println!("Content written to file: {}", file_name);
+                    println!("$ ");
                 }
                 Err(e) => {
                     eprintln!("Error writing to file {}: {}", file_name, e);
