@@ -39,16 +39,13 @@ pub fn echo(args: &mut [&str]) {
         }
     }
 
-    // The portion of args that is actual echo content
-    let content_args: &[&str] = match redirect_idx {
-        Some(i) => &args[..i],
-        None => args,
+    let content_args: Vec<&str> = match redirect_idx {
+        Some(i) => args[..i].iter().copied().filter(|s| !s.is_empty()).collect(),
+        None => args.iter().copied().filter(|s| !s.is_empty()).collect(),
     };
+    
+    let content = parse_echo_args(&content_args);
 
-    // Parse content (quotes, backslashes, space collapsing)
-    let content = parse_echo_args(content_args);
-
-    // If there was a redirect, write to file and return
     if let Some(i) = redirect_idx {
         if i + 1 < args.len() {
             let file_name = args[i + 1];
@@ -61,12 +58,9 @@ pub fn echo(args: &mut [&str]) {
         return;
     }
 
-    // No redirect — print
     println!("{}", content);
 }
 
-/// Collapses spaces, strips quotes, handles backslash escapes.
-/// Returns the final string that echo should output.
 fn parse_echo_args(args: &[&str]) -> String {
     let input = args.join(" ");
     let mut result = String::new();
