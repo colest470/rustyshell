@@ -49,7 +49,8 @@ pub fn echo(args: &mut [&str]) {
     if let Some(i) = redirect_idx {
         if i + 1 < args.len() {
             let file_name = args[i + 1];
-            if let Err(e) = write_files(&content, file_name) {
+            let content_with_newline = format!("{}\n", content);
+            if let Err(e) = write_files(&content_with_newline, file_name) {
                 eprintln!("echo: {}: {}", file_name, e);
             }
         } else {
@@ -58,7 +59,7 @@ pub fn echo(args: &mut [&str]) {
         return;
     }
 
-    println!("{}\n", content);
+    println!("{}", content);
 }
 
 fn parse_echo_args(args: &[&str]) -> String {
