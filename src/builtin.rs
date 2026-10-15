@@ -43,7 +43,7 @@ pub fn echo(args: &mut [&str]) {
         Some(i) => args[..i].iter().copied().filter(|s| !s.is_empty()).collect(),
         None => args.iter().copied().filter(|s| !s.is_empty()).collect(),
     };
-    
+
     let content = parse_echo_args(&content_args);
 
     if let Some(i) = redirect_idx {
@@ -58,7 +58,7 @@ pub fn echo(args: &mut [&str]) {
         return;
     }
 
-    println!("{}", content);
+    println!("{}\n", content);
 }
 
 fn parse_echo_args(args: &[&str]) -> String {
