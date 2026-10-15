@@ -75,6 +75,5 @@ pub fn if_executable(input: &str) -> (bool, String, String, Vec<String>) {
         return (true, command, path_to_file, args);
     }
 
-    print!("{:?}", parts);
     (false, String::new(), String::new(), Vec::new())
 }
