@@ -12,19 +12,26 @@ fn main() {
         let mut input = String::new();
         io::stdin().read_line(&mut input).expect("No command entered");
 
-        let input_trimmed = input.trim();
-        if input_trimmed.is_empty() {
+        if input.trim().is_empty() {
             print!("Invalid command");
             continue;
         }
 
-        // Parse standard parts for general commands and path lookups
-        let parts: Vec<&str> = input_trimmed.split_whitespace().collect();
+        // a checker to check if the command is for an executable file
+        let (is_executable_file, command, path_to_file, args) = helpers::if_executable(input.trim());
+
+        if is_executable_file {
+            let final_args: Vec<&str> = args.iter().map(String::as_str).collect();
+            exec::execute_file(command.as_str(), &path_to_file, &final_args);
+
+            continue;
+        }
+
+        let parts: Vec<&str> = input.split_whitespace().collect();
         let command = parts[0];
         let args = &parts[1..];
 
-        // Keep a space-split version specifically for echo/cat if needed
-        let mut parts_echo: Vec<&str> = input_trimmed.split(' ').collect();
+        let mut parts_echo: Vec<&str> = input.split(' ').collect();
 
         match command {
             "exit" => break,
@@ -37,21 +44,9 @@ fn main() {
                 let args_echo = &mut parts_echo[1..];
                 builtin::cat(args_echo);
             }
-            _ => {
-                // Check if it's a direct executable file path (e.g. ./script or /bin/ls)
-                let (is_executable_file, exec_command, path_to_file, exec_args) = 
-                    helpers::if_executable(input_trimmed);
-
-                if is_executable_file {
-                    let final_args: Vec<&str> = exec_args.iter().map(String::as_str).collect();
-                    exec::execute_file(&exec_command, &path_to_file, &final_args);
-                } else {
-                    // Otherwise, search for it in the system PATH
-                    match exec::find_in_path(command) {
-                        Some(path) => exec::execute_file(command, path.to_str().unwrap(), args),
-                        None => println!("{}: command not found", command),
-                    }
-                }
+            _ => match exec::find_in_path(command) {
+                Some(path) => exec::execute_file(command, path.to_str().unwrap(), args),
+                None => println!("{}: command not found", command),
             }
         }
     }
