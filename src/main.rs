@@ -20,11 +20,11 @@ fn main() {
         // a checker to check if the command is for an executable file
         let (is_executable_file, command, path_to_file, args) = helpers::if_executable(input.trim());
 
-        print!("{:?}", is_executable_file);
-
         if is_executable_file {
             let final_args: Vec<&str> = args.iter().map(String::as_str).collect();
             exec::execute_file(command.as_str(), &path_to_file, &final_args);
+
+            continue;
         }
 
         let parts: Vec<&str> = input.split_whitespace().collect();
