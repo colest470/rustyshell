@@ -47,7 +47,7 @@ pub fn echo(args: &mut [&str]) {
             let result = write_files(content.as_str(), file_name); // result : io::Result<()>
             match result {
                 Ok(_) => {
-                    println!("Content written to file: {}", file_name);
+                    // println!("Content written to file: {}", file_name);
                 }
                 Err(e) => {
                     eprintln!("Error writing to file {}: {}", file_name, e);
@@ -120,7 +120,7 @@ pub fn cat(args: &mut [&str]) {
                     if e.kind() == io::ErrorKind::BrokenPipe {
                         return;
                     }
-                    eprintln!("cat: {}: {}", filename, e);
+                    // eprintln!("cat: {}: {}", filename, e);
                 }
             }
             Err(e) => eprintln!("cat: {}: {}", filename, e),
@@ -147,7 +147,7 @@ pub fn ls(args: &mut [&str]) {
             let result = write_files(content.as_str(), file_name); // result : io::Result<()>
             match result {
                 Ok(_) => {
-                    print!("$ ");
+                    // print!("$ ");
                 }
                 Err(e) => {
                     eprintln!("Error writing to file {}: {}", file_name, e);
