@@ -5,8 +5,6 @@ use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process::Command;
 
-// use crate::helpers::{unquote};
-
 pub fn find_in_path(command: &str) -> Option<PathBuf> {
     let path = env::var_os("PATH");
     let path_ext = env::var_os("PATHEXT");

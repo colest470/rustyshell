@@ -1,3 +1,5 @@
+use crate::exec::{find_in_path};
+
 pub fn remove_trailing_new_line<'a, 'b>(args: &'a mut [&'b str]) -> &'a mut [&'b str] {
     let args_length: usize = args.len();
     let mut last_element: &str = args[args_length - 1];
@@ -60,10 +62,19 @@ pub fn unquote(arg: &str) -> Vec<String> {
     result
 }
 
-pub fn check_if_executable(input: &str) -> (bool, ) {
+pub fn if_executable(input: &str) -> (bool, String, String, Vec<String>) {
     let parts = unquote(input);
 
-    print!("{:?}", parts);
+    let opt = find_in_path(parts[0].as_str());
 
-    return (false, );
+    if let Some(path) = opt {
+        let command = parts[0].clone();
+        let path_to_file = path.to_str().unwrap().to_string();
+        let args: Vec<String> = parts[1..].to_vec();
+
+        return (true, command, path_to_file, args);
+    }
+
+    print!("{:?}", parts);
+    (false, String::new(), String::new(), Vec::new())
 }
