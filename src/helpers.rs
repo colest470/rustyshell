@@ -1,12 +1,15 @@
 use crate::exec::{find_in_path};
 
 pub fn remove_trailing_new_line<'a, 'b>(args: &'a mut [&'b str]) -> &'a mut [&'b str] {
-    let args_length: usize = args.len();
-    let mut last_element: &str = args[args_length - 1];
-    last_element = &last_element[..last_element.len() - 1];
-    args[args_length - 1] = last_element;
-
-    return args;
+    if let Some(last) = args.last_mut() {
+        if last.ends_with('\n') {
+            *last = &last[..last.len() - 1];
+        }
+        if last.ends_with('\r') {
+            *last = &last[..last.len() - 1];
+        }
+    }
+    args
 }
 
 

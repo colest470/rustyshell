@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io::{self, Write};
 
-use crate::exec::{find_in_path};
+use crate::exec::{find_in_path, write_files};
 use crate::helpers::{remove_trailing_new_line, unquote};
 
 pub fn builtins (args: &[&str]) {
@@ -35,6 +35,27 @@ pub fn echo(args: &mut [&str]) {
     let mut in_double_quotes = false;
     let mut last_was_space = false;
     let mut chars = input.chars().peekable();
+
+    // implementation for redirect output
+    let file_checker: Vec<&str> = ["1>", ">"].to_vec();
+
+    for (i, element) in args.iter().enumerate() {
+        if *element == file_checker[0] || *element == file_checker[1] {
+            let file_name = args[i + 1];
+            let content = args[0..i].join(" ");
+
+            let result = write_files(content.as_str(), file_name); // result : io::Result<()>
+            match result {
+                Ok(_) => {
+                    println!("Content written to file: {}", file_name);
+                }
+                Err(e) => {
+                    eprintln!("Error writing to file {}: {}", file_name, e);
+                }
+            }
+            continue;
+        }
+    }
 
     while let Some(ch) = chars.next() {
         match ch {
@@ -87,6 +108,8 @@ pub fn cat(args: &mut [&str]) {
     let stdout = io::stdout();
     let mut out = stdout.lock();
 
+    print!("{:?}", args);
+
     for filename in unquoted_args {
         let filename = filename.trim();
         if filename.is_empty() {
@@ -103,6 +126,62 @@ pub fn cat(args: &mut [&str]) {
                 }
             }
             Err(e) => eprintln!("cat: {}: {}", filename, e),
+        }
+    }
+
+    let _ = out.flush();
+}
+
+pub fn ls(args: &mut [&str]) {
+    remove_trailing_new_line(args);
+
+    let full_args = args.join(" ");
+    let unquoted_args = unquote(&full_args);
+
+    let stdout = io::stdout();
+    let mut out = stdout.lock();
+
+    for element in args.iter() {
+        if *element == ">" || *element == "1>" {
+            let file_name = args[args.len() - 1];
+            let content = args[0..args.len() - 2].join(" ");
+
+            let result = write_files(content.as_str(), file_name); // result : io::Result<()>
+            match result {
+                Ok(_) => {
+                    println!("Content written to file: {}", file_name);
+                }
+                Err(e) => {
+                    eprintln!("Error writing to file {}: {}", file_name, e);
+                }
+            }
+            return;
+        }
+    }
+
+    for filename in unquoted_args {
+        let filename = filename.trim();
+        if filename.is_empty() {
+            continue;
+        }
+
+        match std::fs::read_dir(filename) {
+            Ok(entries) => {
+                for entry in entries {
+                    match entry {
+                        Ok(entry) => {
+                            if let Err(e) = writeln!(out, "{}", entry.file_name().to_string_lossy()) {
+                                if e.kind() == io::ErrorKind::BrokenPipe {
+                                    return;
+                                }
+                                eprintln!("ls: {}: {}", filename, e);
+                            }
+                        }
+                        Err(e) => eprintln!("ls: {}: {}", filename, e),
+                    }
+                }
+            }
+            Err(e) => eprintln!("ls: {}: {}", filename, e),
         }
     }
 

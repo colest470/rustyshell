@@ -1,9 +1,11 @@
 use faccess::PathExt;
 use pathsearch::PathSearcher;
 use std::env;
+use std::fs::OpenOptions;
 use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process::Command;
+use std::io::{self, Write};
 
 pub fn find_in_path(command: &str) -> Option<PathBuf> {
     let path = env::var_os("PATH");
@@ -25,4 +27,28 @@ pub fn execute_file(command: &str, file_path: &str, args: &[&str]) {
         .args(args)
         .status()
         .expect("Error executing that file");
+}
+
+pub fn write_files(content: &str, file_name: &str) -> io::Result<()> {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(file_name)?;
+
+        file.write_all(content.as_bytes())?;
+
+    // if origin_file_name == "" {
+    //     let mut file = OpenOptions::new()
+    //         .write(true)
+    //         .create(true)
+    //         .truncate(true)
+    //         .open(file_name)?;
+
+    //     file.write_all(content.as_bytes())?;
+    // } else {
+
+    // }
+
+    Ok(())
 }
