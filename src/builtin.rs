@@ -168,6 +168,7 @@ pub fn ls(args: &mut [&str]) {
     let mut out = stdout.lock();
     execute_ls(args, &mut out);
 }
+
 fn execute_ls(args: &[&str], out: &mut impl Write) {
     let full_args_str = args.join(" ");
     let unquoted_args = unquote(&full_args_str);
@@ -179,11 +180,9 @@ fn execute_ls(args: &[&str], out: &mut impl Write) {
         if trimmed.is_empty() {
             continue;
         }
-
         if trimmed.starts_with('-') {
             continue;
         }
-
         target_paths.push(trimmed.to_string());
     }
 
@@ -194,16 +193,22 @@ fn execute_ls(args: &[&str], out: &mut impl Write) {
     for filename in &target_paths {
         match fs::read_dir(filename) {
             Ok(entries) => {
+                let mut names: Vec<String> = Vec::new();
                 for entry in entries {
                     match entry {
                         Ok(entry) => {
-                            if let Err(e) = writeln!(out, "{}", entry.file_name().to_string_lossy()) {
-                                if e.kind() == io::ErrorKind::BrokenPipe {
-                                    return;
-                                }
-                            }
+                            names.push(entry.file_name().to_string_lossy().into_owned());
                         }
                         Err(e) => eprintln!("ls: {}: {}", filename, e),
+                    }
+                }
+                names.sort();
+
+                for name in names {
+                    if let Err(e) = writeln!(out, "{}", name) {
+                        if e.kind() == io::ErrorKind::BrokenPipe {
+                            return;
+                        }
                     }
                 }
             }
