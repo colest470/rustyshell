@@ -108,8 +108,6 @@ pub fn cat(args: &mut [&str]) {
     let stdout = io::stdout();
     let mut out = stdout.lock();
 
-    print!("{:?}", args);
-
     for filename in unquoted_args {
         let filename = filename.trim();
         if filename.is_empty() {
