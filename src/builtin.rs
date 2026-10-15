@@ -19,45 +19,61 @@ pub fn builtins (args: &[&str]) {
 }
 
 pub fn echo(args: &mut [&str]) {
-    let args_length = args.len();
-    if args_length == 0 {
+    if args.is_empty() {
         println!();
         return;
     }
 
-    let mut last_element = args[args_length - 1];
-    if let Some(stripped) = last_element.strip_suffix('\n') {
-        last_element = stripped;
+    // Strip a trailing newline from the last arg (from `remove_trailing_new_line`-like behavior)
+    let last_idx = args.len() - 1;
+    if let Some(stripped) = args[last_idx].strip_suffix('\n') {
+        args[last_idx] = stripped;
     }
-    args[args_length - 1] = last_element;
 
+    // Detect redirection: `> file` or `1> file`
+    let mut redirect_idx: Option<usize> = None;
+    for (i, element) in args.iter().enumerate() {
+        if *element == ">" || *element == "1>" {
+            redirect_idx = Some(i);
+            break;
+        }
+    }
+
+    // The portion of args that is actual echo content
+    let content_args: &[&str] = match redirect_idx {
+        Some(i) => &args[..i],
+        None => args,
+    };
+
+    // Parse content (quotes, backslashes, space collapsing)
+    let content = parse_echo_args(content_args);
+
+    // If there was a redirect, write to file and return
+    if let Some(i) = redirect_idx {
+        if i + 1 < args.len() {
+            let file_name = args[i + 1];
+            if let Err(e) = write_files(&content, file_name) {
+                eprintln!("echo: {}: {}", file_name, e);
+            }
+        } else {
+            eprintln!("echo: syntax error: expected filename after '>'");
+        }
+        return;
+    }
+
+    // No redirect — print
+    println!("{}", content);
+}
+
+/// Collapses spaces, strips quotes, handles backslash escapes.
+/// Returns the final string that echo should output.
+fn parse_echo_args(args: &[&str]) -> String {
     let input = args.join(" ");
     let mut result = String::new();
     let mut in_single_quotes = false;
     let mut in_double_quotes = false;
     let mut last_was_space = false;
     let mut chars = input.chars().peekable();
-
-    // implementation for redirect output
-    let file_checker: Vec<&str> = ["1>", ">"].to_vec();
-
-    for (i, element) in args.iter().enumerate() {
-        if *element == file_checker[0] || *element == file_checker[1] {
-            let file_name = args[i + 1];
-            let content = args[0..i].join(" ");
-
-            let result = write_files(content.as_str(), file_name); // result : io::Result<()>
-            match result {
-                Ok(_) => {
-                    // println!("Content written to file: {}", file_name);
-                }
-                Err(e) => {
-                    eprintln!("Error writing to file {}: {}", file_name, e);
-                }
-            }
-            continue;
-        }
-    }
 
     while let Some(ch) = chars.next() {
         match ch {
@@ -98,7 +114,7 @@ pub fn echo(args: &mut [&str]) {
         }
     }
 
-    println!("{}", result);
+    result
 }
 
 pub fn cat(args: &mut [&str]) {
