@@ -1,5 +1,7 @@
 use std::fs::File;
 use std::io::{self, Write};
+use std::path::Path;
+use std::fs;
 
 use crate::exec::{find_in_path, write_files};
 use crate::helpers::{remove_trailing_new_line, unquote};
@@ -129,33 +131,46 @@ pub fn cat(args: &mut [&str]) {
 
     let _ = out.flush();
 }
-
 pub fn ls(args: &mut [&str]) {
     remove_trailing_new_line(args);
 
-    let full_args = args.join(" ");
-    let unquoted_args = unquote(&full_args);
-
-    let stdout = io::stdout();
-    let mut out = stdout.lock();
-
-    for element in args.iter() {
+    // 1. Look for redirection operator ('>' or '1>') anywhere in args
+    let mut redirect_idx = None;
+    for (i, element) in args.iter().enumerate() {
         if *element == ">" || *element == "1>" {
-            let file_name = args[args.len() - 1];
-            let content = args[0..args.len() - 2].join(" ");
+            redirect_idx = Some(i);
+            break;
+        }
+    }
 
-            let result = write_files(content.as_str(), file_name); // result : io::Result<()>
-            match result {
-                Ok(_) => {
-                    // print!("$ ");
+    if let Some(idx) = redirect_idx {
+        if idx + 1 < args.len() {
+            let file_name = args[idx + 1];
+            let ls_args = &args[..idx];
+
+            if let Some(parent) = Path::new(file_name).parent() {
+                if !parent.as_os_str().is_empty() {
+                    let _ = fs::create_dir_all(parent);
                 }
-                Err(e) => {
-                    eprintln!("Error writing to file {}: {}", file_name, e);
+            }
+
+            match File::create(file_name) {
+                Ok(mut file) => {
+                    execute_ls(ls_args, &mut file);
                 }
+                Err(e) => eprintln!("ls: {}: {}", file_name, e),
             }
             return;
         }
     }
+
+    let stdout = io::stdout();
+    let mut out = stdout.lock();
+    execute_ls(args, &mut out);
+}
+
+fn execute_ls(args: &[&str], out: &mut impl Write) {
+    let unquoted_args = unquote(&args.join(" "));
 
     for filename in unquoted_args {
         let filename = filename.trim();
@@ -163,7 +178,7 @@ pub fn ls(args: &mut [&str]) {
             continue;
         }
 
-        match std::fs::read_dir(filename) {
+        match fs::read_dir(filename) {
             Ok(entries) => {
                 for entry in entries {
                     match entry {
@@ -172,7 +187,6 @@ pub fn ls(args: &mut [&str]) {
                                 if e.kind() == io::ErrorKind::BrokenPipe {
                                     return;
                                 }
-                                eprintln!("ls: {}: {}", filename, e);
                             }
                         }
                         Err(e) => eprintln!("ls: {}: {}", filename, e),
