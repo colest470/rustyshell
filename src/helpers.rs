@@ -59,3 +59,11 @@ pub fn unquote(arg: &str) -> Vec<String> {
 
     result
 }
+
+pub fn check_if_executable(input: &str) -> (bool, ) {
+    let parts = unquote(input);
+
+    print!("{:?}", parts);
+
+    return (false, );
+}

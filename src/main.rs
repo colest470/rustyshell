@@ -13,8 +13,17 @@ fn main() {
         io::stdin().read_line(&mut input).expect("No command entered");
 
         if input.trim().is_empty() {
+            print!("Invalid command");
             continue;
         }
+
+        // a checker to check if the command is for an executable file
+        let (is_executable_file ) = helpers::check_if_executable(input.trim());
+
+        print!("{:?}", is_executable_file);
+        // if helpers::check_if_executable() {
+        //     exec::execute_file(command, file_path, args);
+        // }
 
         let parts: Vec<&str> = input.split_whitespace().collect();
         let command = parts[0];
