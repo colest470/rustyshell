@@ -160,157 +160,113 @@ pub fn cat(args: &mut [&str]) {
 }
 
 pub fn ls(args: &mut [&str]) {
-    // 1. Detect redirection: `> file` or `1> file`
-    let redirect_pos = args
-        .iter()
-        .position(|&x| x == ">" || x == "1>");
+    remove_trailing_new_line(args);
 
-    let (ls_args, dest): (&[&str], Option<&str>) = match redirect_pos {
-        Some(i) => {
-            if i + 1 >= args.len() {
-                eprintln!("ls: syntax error: expected filename after '>'");
-                return;
+    // 1. Look for redirection operator ('>' or '1>') anywhere in args
+    let mut redirect_idx = None;
+    for (i, element) in args.iter().enumerate() {
+        if *element == ">" || *element == "1>" {
+            redirect_idx = Some(i);
+            break;
+        }
+    }
+
+    if let Some(idx) = redirect_idx {
+        if idx + 1 < args.len() {
+            let file_name = args[idx + 1];
+            let ls_args = &args[..idx];
+
+            if let Some(parent) = Path::new(file_name).parent() {
+                if !parent.as_os_str().is_empty() {
+                    let _ = fs::create_dir_all(parent);
+                }
             }
-            (&args[..i], Some(args[i + 1]))
+
+            match File::create(file_name) {
+                Ok(mut file) => {
+                    execute_ls(ls_args, &mut file);
+                }
+                Err(e) => eprintln!("ls: {}: {}", file_name, e),
+            }
+            return;
+        }
+    }
+
+    let stdout = io::stdout();
+    let mut out = stdout.lock();
+    execute_ls(args, &mut out);
+}
+
+pub fn ls(args: &mut [&str]) {
+    // Find redirect
+    let redirect_pos = args.iter().position(|&x| x == ">" || x == "1>");
+    let (ls_args, dest): (&[&str], Option<&str>) = match redirect_pos {
+        Some(i) if i + 1 < args.len() => (&args[..i], Some(args[i + 1])),
+        Some(_) => {
+            eprintln!("ls: syntax error: expected filename after '>'");
+            return;
         }
         None => (&args[..], None),
     };
 
-    // 2. Parse flags
-    let mut long_format = false;
-    let mut one_per_line = false;
-    let mut show_all = false;
-    let mut paths: Vec<&str> = Vec::new();
-
-    for arg in ls_args.iter() {
-        match *arg {
-            "-1" => one_per_line = true,
-            "-a" => show_all = true,
-            "-l" => long_format = true,
-            _ if arg.starts_with('-') => {
-                // combined flags like `-la`
-                for ch in arg.chars().skip(1) {
-                    match ch {
-                        '1' => one_per_line = true,
-                        'a' => show_all = true,
-                        'l' => long_format = true,
-                        _ => {}
-                    }
+    match dest {
+        Some(file_name) => {
+            if let Some(parent) = Path::new(file_name).parent() {
+                if !parent.as_os_str().is_empty() {
+                    let _ = fs::create_dir_all(parent);
                 }
             }
-            _ => paths.push(arg),
+            match File::create(file_name) {
+                Ok(mut file) => {
+                    execute_ls(ls_args, &mut file);
+                    let _ = file.flush();
+                }
+                Err(e) => eprintln!("ls: {}: {}", file_name, e),
+            }
+        }
+        None => {
+            let stdout = io::stdout();
+            let mut out = stdout.lock();
+            execute_ls(ls_args, &mut out);
         }
     }
+}
 
-    if paths.is_empty() {
-        paths.push(".");
-    }
+fn execute_ls(args: &[&str], out: &mut impl Write) {
+    let mut target_paths: Vec<&str> = Vec::new();
 
-    // 3. Build output into a buffer (do NOT print directly)
-    let mut out = String::new();
-    let multiple_paths = paths.len() > 1;
-
-    for (idx, path) in paths.iter().enumerate() {
-        let meta = match fs::metadata(path) {
-            Ok(m) => m,
-            Err(e) => {
-                let msg = e.to_string();
-                let clean = msg.split(" (os error").next().unwrap_or(&msg);
-                eprintln!("ls: {path}: {clean}");
-                continue;
-            }
-        };
-
-        if multiple_paths {
-            if idx > 0 {
-                out.push('\n');
-            }
-            out.push_str(path);
-            out.push_str(":\n");
-        }
-
-        // Single file: just print its name
-        if meta.is_file() {
-            out.push_str(path);
-            out.push('\n');
+    for arg in args {
+        if arg.is_empty() || arg.starts_with('-') {
             continue;
         }
+        target_paths.push(arg);
+    }
 
-        // Directory listing
-        let entries = match fs::read_dir(path) {
-            Ok(e) => e,
-            Err(e) => {
-                let msg = e.to_string();
-                let clean = msg.split(" (os error").next().unwrap_or(&msg);
-                eprintln!("ls: {path}: {clean}");
-                continue;
-            }
-        };
+    if target_paths.is_empty() {
+        target_paths.push(".");
+    }
 
-        let mut names: Vec<String> = Vec::new();
-        for entry in entries.flatten() {
-            let name = entry.file_name().to_string_lossy().into_owned();
-            if !show_all && name.starts_with('.') {
-                continue;
-            }
-            names.push(name);
-        }
-
-        // ls sorts alphabetically by default
-        names.sort();
-
-        if long_format {
-            // Re-read metadata for each entry to print sizes etc.
-            // (We already sorted names, so re-walk the dir via names.)
-            // Build long-format lines into `out`.
-            for name in &names {
-                let full = std::path::Path::new(path).join(name);
-                match fs::metadata(&full) {
-                    Ok(m) => {
-                        let size = if m.is_dir() { 0 } else { m.len() };
-                        let kind = if m.is_dir() { 'd' } else { '-' };
-                        out.push_str(&format!(
-                            "{}{} {} {}\n",
-                            kind,
-                            // simple perms placeholder; extend if tests need real mode bits
-                            "rw-r--r--",
-                            size,
-                            name
-                        ));
-                    }
-                    Err(_) => {
-                        out.push_str(name);
-                        out.push('\n');
+    for filename in target_paths {
+        match fs::read_dir(filename) {
+            Ok(entries) => {
+                let mut names: Vec<String> = entries
+                    .flatten()
+                    .map(|e| e.file_name().to_string_lossy().into_owned())
+                    .collect();
+                names.sort();
+                for name in names {
+                    if writeln!(out, "{}", name).is_err() {
+                        return;
                     }
                 }
             }
-        } else if one_per_line {
-            for name in &names {
-                out.push_str(name);
-                out.push('\n');
-            }
-        } else {
-            // Default: space-separated columns on one line.
-            out.push_str(&names.join("  "));
-            if !names.is_empty() {
-                out.push('\n');
+            Err(e) => {
+                let msg = e.to_string();
+                let clean = msg.split(" (os error").next().unwrap_or(&msg);
+                eprintln!("ls: {}: {}", filename, clean);
             }
         }
     }
 
-    // 4. Emit
-    if let Some(dest) = dest {
-        if let Some(parent) = std::path::Path::new(dest).parent() {
-            if !parent.as_os_str().is_empty() {
-                let _ = fs::create_dir_all(parent);
-            }
-        }
-        if let Err(e) = write_files(&out, dest) {
-            let msg = e.to_string();
-            let clean = msg.split(" (os error").next().unwrap_or(&msg);
-            eprintln!("ls: {dest}: {clean}");
-        }
-    } else {
-        print!("{out}");
-    }
+    let _ = out.flush();
 }
