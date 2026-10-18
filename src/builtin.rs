@@ -117,40 +117,35 @@ pub fn cat(args: &mut [&str]) {
 
     match redirect_pos {
         Some(i) => {
-            let source = args[0..i].join(" ");
+            let paths = &args[..i];
             let dest = args[i + 1..].join(" ");
-            // println!("{:?}", [source.as_str(), dest.as_str()]);
 
             let mut content = String::new();
-            for path in &args[..i] {
+            for path in paths {
                 match read_file(path) {
-                    Ok(c)  => content.push_str(&c),
-                    Err(e) =>{ 
+                    Ok(c) => content.push_str(&c),
+                    Err(e) => {
                         let msg = e.to_string();
-                        msg.split("(os error 2)").next().unwrap_or(&msg);
-                
-                        println!("cat: {path}: {msg}");
+                        let clean = msg.split(" (os error").next().unwrap_or(&msg);
+                        eprintln!("cat: {path}: {clean}");
+                        return;
                     }
                 }
             }
 
-        let content = match read_file(&source) {
-            Ok(c)  => c,
-            Err(e) => {
-                let msg = e.to_string();
-                let clean = msg.split(" (os error").next().unwrap_or(&msg);
-                eprintln!("cat: {source}: {clean}");
-                return;
+            if let Err(e) = write_files(&content, dest.as_str()) {
+                eprintln!("cat: {dest}: {e}");
             }
-        };
-
-        let res = write_files(&content, dest.as_str());
         }
         None => {
             for path in args.iter() {
                 match read_file(path) {
                     Ok(content) => print!("{content}"),
-                    Err(e)      => eprintln!("cat: {path}: {e}"),
+                    Err(e) => {
+                        let msg = e.to_string();
+                        let clean = msg.split(" (os error").next().unwrap_or(&msg);
+                        eprintln!("cat: {path}: {clean}");
+                    }
                 }
             }
         }
