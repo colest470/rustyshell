@@ -4,8 +4,6 @@ mod builtin;
 mod exec;
 mod helpers;
 
-
-
 fn main() {
     loop {
         print!("$ ");
@@ -24,7 +22,7 @@ fn main() {
         let command = parts[0];
         let args = &parts[1..];
 
-        let mut parts_echo: Vec<&str> = input_trimmed.split_whitespace().collect();
+        let mut parts_echo: Vec<&str> = input_trimmed.split(' ').collect();
 
         match command {
             "exit" => break,
@@ -34,9 +32,8 @@ fn main() {
                 builtin::echo(args_echo);
             }
             "cat" => {
-                let tokens = helpers::tokenize(&input);
-                let mut args: Vec<&str> = tokens.iter().skip(1).map(|s| s.as_str()).collect();
-                builtin::cat(&mut args);
+                let args_cat = &mut parts_echo[1..];
+                builtin::cat(args_cat);
             }
             "ls" => {
                 let args_ls = &mut parts_echo[1..];
