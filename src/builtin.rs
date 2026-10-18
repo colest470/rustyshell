@@ -113,13 +113,14 @@ fn parse_echo_args(args: &[&str]) -> String {
 }
 
 pub fn cat(args: &mut [&str]) {
+    print!("{:?}", args);
     let redirect_pos = args.iter().position(|&x| x == "1>" || x == ">");
 
     match redirect_pos {
         Some(i) => {
             let source = args[0..i].join(" ");
             let dest = args[i + 1..].join(" ");
-            //println!("{:?}", [source.as_str(), dest.as_str()]);
+            // println!("{:?}", [source.as_str(), dest.as_str()]);
 
         let content = match read_file(&source) {
             Ok(c)  => c,
@@ -129,9 +130,11 @@ pub fn cat(args: &mut [&str]) {
         let res = write_files(&content, dest.as_str());
         }
         None => {
-            match read_file(args[0]) {
-                Ok(content) => print!("{content}"),
-                Err(e)      => eprintln!("error: {e}"),
+            for path in args.iter() {
+                match read_file(path) {
+                    Ok(content) => print!("{content}"),
+                    Err(e)      => eprintln!("cat: {path}: {e}"),
+                }
             }
         }
     }
