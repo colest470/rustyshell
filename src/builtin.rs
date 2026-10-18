@@ -125,13 +125,13 @@ pub fn cat(args: &mut [&str]) {
             for path in &args[..i] {
                 match read_file(path) {
                     Ok(c)  => content.push_str(&c),
-                    Err(e) => eprintln!("cat: {path}"),
+                    Err(e) => println!("cat: {path}: {e} "),
                 }
             }
 
         let content = match read_file(&source) {
             Ok(c)  => c,
-            Err(e) => { eprintln!("cat: {source}"); return; }
+            Err(e) => { println!("cat: {source}: {e}"); return; }
         };
 
         let res = write_files(&content, dest.as_str());
