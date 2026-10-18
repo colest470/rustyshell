@@ -113,8 +113,6 @@ fn parse_echo_args(args: &[&str]) -> String {
 }
 
 pub fn cat(args: &mut [&str]) {
-    print!("{:?}", args);
-
     let redirect_pos = args.iter().position(|&x| x == "1>" || x == ">");
 
     match redirect_pos {
