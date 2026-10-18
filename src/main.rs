@@ -28,8 +28,7 @@ fn main() {
             "exit" => break,
             "type" => builtin::builtins(args),
             "echo" => {
-                let mut args_echo: Vec<&str> = tokens.iter().skip(1).map(|s| s.as_str()).collect();
-                builtin::echo(&mut args_echo);
+                builtin::echo(input_trimmed);
             }
             "cat" => {
                 let mut args_cat: Vec<&str> = tokens.iter().skip(1).map(|s| s.as_str()).collect();

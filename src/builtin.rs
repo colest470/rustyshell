@@ -18,37 +18,41 @@ pub fn builtins (args: &[&str]) {
     }
 }
 
-pub fn echo(args: &mut [&str]) {
+pub fn echo(input: &str) {
+    let remainder = input.strip_prefix("echo").unwrap_or(input).trim_start();
+    let mut args = split_echo_args(remainder);
+
     if args.is_empty() {
         println!();
         return;
     }
 
     // Strip a trailing newline from the last arg (from `remove_trailing_new_line`-like behavior)
-    let last_idx = args.len() - 1;
-    if let Some(stripped) = args[last_idx].strip_suffix('\n') {
-        args[last_idx] = stripped;
+    if let Some(last) = args.last_mut() {
+        if let Some(stripped) = last.strip_suffix('\n') {
+            *last = stripped.to_string();
+        }
     }
 
     // Detect redirection: `> file` or `1> file`
     let mut redirect_idx: Option<usize> = None;
     for (i, element) in args.iter().enumerate() {
-        if *element == ">" || *element == "1>" {
+        if element == ">" || element == "1>" {
             redirect_idx = Some(i);
             break;
         }
     }
 
     let content_args: Vec<&str> = match redirect_idx {
-        Some(i) => args[..i].iter().copied().filter(|s| !s.is_empty()).collect(),
-        None => args.iter().copied().filter(|s| !s.is_empty()).collect(),
+        Some(i) => args.iter().take(i).filter(|s| !s.is_empty()).map(String::as_str).collect(),
+        None => args.iter().filter(|s| !s.is_empty()).map(String::as_str).collect(),
     };
 
-    let content = parse_echo_args(&content_args);
+    let content = content_args.join(" ");
 
     if let Some(i) = redirect_idx {
         if i + 1 < args.len() {
-            let file_name = args[i + 1];
+            let file_name = args[i + 1].as_str();
             let content_with_newline = format!("{}\n", content);
             if let Err(e) = write_files(&content_with_newline, file_name) {
                 eprintln!("echo: {}: {}", file_name, e);
@@ -62,54 +66,48 @@ pub fn echo(args: &mut [&str]) {
     println!("{}", content);
 }
 
-fn parse_echo_args(args: &[&str]) -> String {
-    let input = args.join(" ");
-    let mut result = String::new();
-    let mut in_single_quotes = false;
-    let mut in_double_quotes = false;
-    let mut last_was_space = false;
+fn split_echo_args(input: &str) -> Vec<String> {
+    let mut args = Vec::new();
+    let mut current = String::new();
+    let mut in_single = false;
+    let mut in_double = false;
     let mut chars = input.chars().peekable();
 
     while let Some(ch) = chars.next() {
         match ch {
-            '\'' if !in_double_quotes => {
-                in_single_quotes = !in_single_quotes;
-                last_was_space = false;
+            '\'' if !in_double => {
+                in_single = !in_single;
             }
-            '"' if !in_single_quotes => {
-                in_double_quotes = !in_double_quotes;
-                last_was_space = false;
+            '"' if !in_single => {
+                in_double = !in_double;
             }
-            '\\' if !in_single_quotes => {
+            '\\' if !in_single => {
                 match chars.next() {
                     Some(next_ch) => {
-                        if in_double_quotes
-                            && !matches!(next_ch, '"' | '\\' | '$' | '`' | '\n')
-                        {
-                            result.push('\\');
-                            result.push(next_ch);
-                        } else {
-                            result.push(next_ch);
+                        if in_double && !matches!(next_ch, '"' | '\\' | '$' | '`' | '\n') {
+                            current.push('\\');
                         }
+                        current.push(next_ch);
                     }
-                    None => result.push('\\'),
+                    None => current.push('\\'),
                 }
-                last_was_space = false;
             }
-            ' ' | '\t' if !in_single_quotes && !in_double_quotes => {
-                if !last_was_space && !result.is_empty() {
-                    result.push(' ');
+            ' ' | '\t' if !in_single && !in_double => {
+                if !current.is_empty() {
+                    args.push(std::mem::take(&mut current));
                 }
-                last_was_space = true;
             }
             _ => {
-                result.push(ch);
-                last_was_space = false;
+                current.push(ch);
             }
         }
     }
 
-    result
+    if !current.is_empty() {
+        args.push(current);
+    }
+
+    args
 }
 
 pub fn cat(args: &mut [&str]) {
