@@ -88,3 +88,45 @@ pub fn read_file(path: &str) -> io::Result<String> {
     let content = fs::read_to_string(path)?;
     Ok(content)
 }
+
+pub fn tokenize(input: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+    let mut chars = input.chars().peekable();
+    let mut in_single = false;
+    let mut in_double = false;
+    let mut token_started = false;
+
+    while let Some(c) = chars.next() {
+        match (in_single, in_double, c) {
+            (true, _, '\'') => { in_single = false; token_started = true; }
+            (_, true, '"') => { in_double = false; token_started = true; }
+            (false, false, '\'') => { in_single = true; token_started = true; }
+            (false, false, '"') => { in_double = true; token_started = true; }
+            (true, _, _) => current.push(c),      // literal in single quotes
+            (_, true, '\\') => {
+                match chars.next() {
+                    Some('"')  => current.push('"'),
+                    Some('\\') => current.push('\\'),
+                    Some('$')  => current.push('$'),
+                    Some(other) => { current.push('\\'); current.push(other); }
+                    None => current.push('\\'),
+                }
+            }
+            (_, true, _) => current.push(c),
+            (false, false, '\\') => {
+                if let Some(next) = chars.next() { current.push(next); }
+            }
+            (false, false, ' ' | '\t') if token_started => {
+                tokens.push(std::mem::take(&mut current));
+                token_started = false;
+            }
+            (false, false, ' ' | '\t') => { /* skip extra whitespace */ }
+            (false, false, _) => { current.push(c); token_started = true; }
+        }
+    }
+    if token_started || !current.is_empty() {
+        tokens.push(current);
+    }
+    tokens
+}
