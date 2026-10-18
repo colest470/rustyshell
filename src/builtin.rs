@@ -113,7 +113,7 @@ fn parse_echo_args(args: &[&str]) -> String {
 }
 
 pub fn cat(args: &mut [&str]) {
-    let redirect_pos = args.iter().position(|&x| x == "1>" || x == ">");
+    let redirect_pos = args.iter().position(|&x| x == "1>" || x == ">" || x == ">>");
 
     match redirect_pos {
         Some(i) => {
@@ -132,9 +132,16 @@ pub fn cat(args: &mut [&str]) {
                     }
                 }
             }
+            if let Some(parent) = std::path::Path::new(&dest).parent() {
+                if !parent.as_os_str().is_empty() {
+                    let _ = std::fs::create_dir_all(parent);
+                }
+            }
 
             if let Err(e) = write_files(&content, dest.as_str()) {
-                eprintln!("cat: {dest}: {e}");
+                let msg = e.to_string();
+                let clean = msg.split(" (os error").next().unwrap_or(&msg);
+                eprintln!("cat: {dest}: {clean}");
             }
         }
         None => {
