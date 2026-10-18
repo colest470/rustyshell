@@ -118,7 +118,7 @@ pub fn cat(args: &mut [&str]) {
     match redirect_pos {
         Some(i) => {
             let paths = &args[..i];
-            let dest = args[i + 1..].join(" ");
+            let dest = args[i + 1];
 
             let mut content = String::new();
             for path in paths {
@@ -131,13 +131,14 @@ pub fn cat(args: &mut [&str]) {
                     }
                 }
             }
-            if let Some(parent) = std::path::Path::new(&dest).parent() {
+
+            if let Some(parent) = std::path::Path::new(dest).parent() {
                 if !parent.as_os_str().is_empty() {
                     let _ = std::fs::create_dir_all(parent);
                 }
             }
 
-            if let Err(e) = write_files(&content, dest.as_str()) {
+            if let Err(e) = write_files(&content, dest) {
                 let msg = e.to_string();
                 let clean = msg.split(" (os error").next().unwrap_or(&msg);
                 eprintln!("cat: {dest}: {clean}");
