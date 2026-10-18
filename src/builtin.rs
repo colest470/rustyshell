@@ -129,9 +129,10 @@ pub fn cat(args: &mut [&str]) {
         let res = write_files(&content, dest.as_str());
         }
         None => {
-            let file_content = read_file(args[0]);
-
-            println!("{:#?}", file_content);
+            match read_file(args[0]) {
+                Ok(content) => print!("{content}"),
+                Err(e)      => eprintln!("error: {e}"),
+            }
         }
     }
 }
