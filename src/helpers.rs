@@ -91,42 +91,51 @@ pub fn read_file(path: &str) -> io::Result<String> {
 
 pub fn tokenize(input: &str) -> Vec<String> {
     let mut tokens = Vec::new();
-    let mut current = String::new();
-    let mut chars = input.chars().peekable();
+    let mut cur = String::new();
+    let mut started = false;
     let mut in_single = false;
     let mut in_double = false;
-    let mut token_started = false;
+    let mut chars = input.chars().peekable();
 
     while let Some(c) = chars.next() {
-        match (in_single, in_double, c) {
-            (true, _, '\'') => { in_single = false; token_started = true; }
-            (_, true, '"') => { in_double = false; token_started = true; }
-            (false, false, '\'') => { in_single = true; token_started = true; }
-            (false, false, '"') => { in_double = true; token_started = true; }
-            (true, _, _) => current.push(c),      // literal in single quotes
-            (_, true, '\\') => {
-                match chars.next() {
-                    Some('"')  => current.push('"'),
-                    Some('\\') => current.push('\\'),
-                    Some('$')  => current.push('$'),
-                    Some(other) => { current.push('\\'); current.push(other); }
-                    None => current.push('\\'),
+        if in_single {
+            if c == '\'' {
+                in_single = false;
+            } else {
+                cur.push(c);
+            }
+        } else if in_double {
+            match c {
+                '"' => in_double = false,
+                '\\' => match chars.next() {
+                    Some('"')  => cur.push('"'),
+                    Some('\\') => cur.push('\\'),
+                    Some('$')  => cur.push('$'),
+                    Some(n)    => { cur.push('\\'); cur.push(n); }
+                    None       => cur.push('\\'),
+                },
+                _ => cur.push(c),
+            }
+        } else {
+            match c {
+                '\'' => { in_single = true; started = true; }
+                '"'  => { in_double = true; started = true; }
+                '\\' => {
+                    if let Some(n) = chars.next() { cur.push(n); }
+                    started = true;
                 }
+                ' ' | '\t' => {
+                    if started {
+                        tokens.push(std::mem::take(&mut cur));
+                        started = false;
+                    }
+                }
+                _ => { cur.push(c); started = true; }
             }
-            (_, true, _) => current.push(c),
-            (false, false, '\\') => {
-                if let Some(next) = chars.next() { current.push(next); }
-            }
-            (false, false, ' ' | '\t') if token_started => {
-                tokens.push(std::mem::take(&mut current));
-                token_started = false;
-            }
-            (false, false, ' ' | '\t') => { /* skip extra whitespace */ }
-            (false, false, _) => { current.push(c); token_started = true; }
         }
     }
-    if token_started || !current.is_empty() {
-        tokens.push(current);
+    if started || !cur.is_empty() {
+        tokens.push(cur);
     }
     tokens
 }
