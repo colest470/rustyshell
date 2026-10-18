@@ -125,13 +125,23 @@ pub fn cat(args: &mut [&str]) {
             for path in &args[..i] {
                 match read_file(path) {
                     Ok(c)  => content.push_str(&c),
-                    Err(e) => println!("cat: {path}: {e} "),
+                    Err(e) =>{ 
+                        let msg = e.to_string();
+                        msg.split("(os error 2)").next().unwrap_or(&msg);
+                
+                        println!("cat: {path}: {msg}");
+                    }
                 }
             }
 
         let content = match read_file(&source) {
             Ok(c)  => c,
-            Err(e) => { println!("cat: {source}: {e}"); return; }
+            Err(e) => {
+                let msg = e.to_string();
+                let clean = msg.split(" (os error").next().unwrap_or(&msg);
+                eprintln!("cat: {source}: {clean}");
+                return;
+            }
         };
 
         let res = write_files(&content, dest.as_str());
