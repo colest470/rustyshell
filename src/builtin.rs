@@ -131,7 +131,7 @@ pub fn cat(args: &mut [&str]) {
         None => {
             let file_content = read_file(args[0]);
 
-            println!("{:?}", file_content);
+            println!("{:#?}", file_content);
         }
     }
 }
