@@ -160,44 +160,6 @@ pub fn cat(args: &mut [&str]) {
 }
 
 pub fn ls(args: &mut [&str]) {
-    remove_trailing_new_line(args);
-
-    // 1. Look for redirection operator ('>' or '1>') anywhere in args
-    let mut redirect_idx = None;
-    for (i, element) in args.iter().enumerate() {
-        if *element == ">" || *element == "1>" {
-            redirect_idx = Some(i);
-            break;
-        }
-    }
-
-    if let Some(idx) = redirect_idx {
-        if idx + 1 < args.len() {
-            let file_name = args[idx + 1];
-            let ls_args = &args[..idx];
-
-            if let Some(parent) = Path::new(file_name).parent() {
-                if !parent.as_os_str().is_empty() {
-                    let _ = fs::create_dir_all(parent);
-                }
-            }
-
-            match File::create(file_name) {
-                Ok(mut file) => {
-                    execute_ls(ls_args, &mut file);
-                }
-                Err(e) => eprintln!("ls: {}: {}", file_name, e),
-            }
-            return;
-        }
-    }
-
-    let stdout = io::stdout();
-    let mut out = stdout.lock();
-    execute_ls(args, &mut out);
-}
-
-pub fn ls(args: &mut [&str]) {
     // Find redirect
     let redirect_pos = args.iter().position(|&x| x == ">" || x == "1>");
     let (ls_args, dest): (&[&str], Option<&str>) = match redirect_pos {
