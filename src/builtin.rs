@@ -118,7 +118,7 @@ pub fn cat(args: &mut [&str]) {
     match redirect_pos {
         Some(i) => {
             let paths = &args[..i];
-            let dest = args[i + 1];
+            let dest = args[i + 1..].join(" ");
 
             let mut content = String::new();
             for path in paths {
@@ -131,14 +131,13 @@ pub fn cat(args: &mut [&str]) {
                     }
                 }
             }
-
-            if let Some(parent) = std::path::Path::new(dest).parent() {
+            if let Some(parent) = std::path::Path::new(&dest).parent() {
                 if !parent.as_os_str().is_empty() {
                     let _ = std::fs::create_dir_all(parent);
                 }
             }
 
-            if let Err(e) = write_files(&content, dest) {
+            if let Err(e) = write_files(&content, dest.as_str()) {
                 let msg = e.to_string();
                 let clean = msg.split(" (os error").next().unwrap_or(&msg);
                 eprintln!("cat: {dest}: {clean}");
@@ -197,41 +196,50 @@ pub fn ls(args: &mut [&str]) {
     execute_ls(args, &mut out);
 }
 
-
-
 fn execute_ls(args: &[&str], out: &mut impl Write) {
-    let mut target_paths: Vec<&str> = Vec::new();
+    let full_args_str = args.join(" ");
+    let unquoted_args = unquote(&full_args_str);
 
-    for arg in args {
-        if arg.is_empty() || arg.starts_with('-') {
+    let mut target_paths: Vec<String> = Vec::new();
+
+    for arg in unquoted_args {
+        let trimmed = arg.trim();
+        if trimmed.is_empty() {
             continue;
         }
-        target_paths.push(arg);
+        if trimmed.starts_with('-') {
+            continue;
+        }
+        target_paths.push(trimmed.to_string());
     }
 
     if target_paths.is_empty() {
-        target_paths.push(".");
+        target_paths.push(".".to_string());
     }
 
-    for filename in target_paths {
+    for filename in &target_paths {
         match fs::read_dir(filename) {
             Ok(entries) => {
-                let mut names: Vec<String> = entries
-                    .flatten()
-                    .map(|e| e.file_name().to_string_lossy().into_owned())
-                    .collect();
+                let mut names: Vec<String> = Vec::new();
+                for entry in entries {
+                    match entry {
+                        Ok(entry) => {
+                            names.push(entry.file_name().to_string_lossy().into_owned());
+                        }
+                        Err(e) => eprintln!("ls: {}: {}", filename, e),
+                    }
+                }
                 names.sort();
+
                 for name in names {
-                    if writeln!(out, "{}", name).is_err() {
-                        return;
+                    if let Err(e) = writeln!(out, "{}", name) {
+                        if e.kind() == io::ErrorKind::BrokenPipe {
+                            return;
+                        }
                     }
                 }
             }
-            Err(e) => {
-                let msg = e.to_string();
-                let clean = msg.split(" (os error").next().unwrap_or(&msg);
-                eprintln!("ls: {}: {}", filename, clean);
-            }
+            Err(e) => eprintln!("ls: {}: {}", filename, e),
         }
     }
 
