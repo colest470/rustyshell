@@ -24,7 +24,7 @@ fn main() {
         let command = parts[0];
         let args = &parts[1..];
 
-        let mut parts_echo: Vec<&str> = input_trimmed.split(' ').collect();
+        let mut parts_echo: Vec<&str> = input_trimmed.split_whitespace().collect();
 
         match command {
             "exit" => break,
