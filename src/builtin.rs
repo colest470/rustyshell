@@ -121,6 +121,14 @@ pub fn cat(args: &mut [&str]) {
             let dest = args[i + 1..].join(" ");
             // println!("{:?}", [source.as_str(), dest.as_str()]);
 
+            let mut content = String::new();
+            for path in &args[..i] {
+                match read_file(path) {
+                    Ok(c)  => content.push_str(&c),
+                    Err(e) => eprintln!("cat: {path}: {e}"),
+                }
+            }
+
         let content = match read_file(&source) {
             Ok(c)  => c,
             Err(e) => { eprintln!("cat: {source}: {e}"); return; }
