@@ -4,7 +4,7 @@ use std::path::Path;
 use std::fs;
 
 use crate::exec::{find_in_path, write_files};
-use crate::helpers::{remove_trailing_new_line, unquote};
+use crate::helpers::{read_file, remove_trailing_new_line, unquote};
 
 pub fn builtins (args: &[&str]) {
     let target = args.first().copied().unwrap_or("");
@@ -113,49 +113,29 @@ fn parse_echo_args(args: &[&str]) -> String {
 }
 
 pub fn cat(args: &mut [&str]) {
-    // remove_trailing_new_line(args);
-
     print!("{:?}", args);
 
-    let mut cat_args: [&str] = ["".as_str()];
+    let redirect_pos = args.iter().position(|&x| x == "1>" || x == ">");
 
-    for (i, element) in args.iter().enumerate() {
-        if *element == "1>" || *element == ">" {
-            cat_args[0] = args[0..i].join(" ").as_str();
-            cat_args[1] = args[i+1..args.len()].join(" ").as_str();
+    match redirect_pos {
+        Some(i) => {
+            let source = args[0..i].join(" ");
+            let dest = args[i + 1..].join(" ");
+            //println!("{:?}", [source.as_str(), dest.as_str()]);
 
-            break;
+        let content = match read_file(&source) {
+            Ok(c)  => c,
+            Err(e) => { eprintln!("cat: {source}: {e}"); return; }
+        };
+
+        let res = write_files(&content, dest.as_str());
+        }
+        None => {
+            let file_content = read_file(args[0]);
+
+            println!("{:?}", file_content);
         }
     }
-
-    println!("{:?}", cat_args);
-
-    // let full_args = args.join(" ");
-    // let unquoted_args = unquote(&full_args);
-
-    // let stdout = io::stdout();
-    // let mut out = stdout.lock();
-
-    // for filename in unquoted_args {
-    //     let filename = filename.trim();
-    //     if filename.is_empty() {
-    //         continue;
-    //     }
-
-    //     match File::open(filename) {
-    //         Ok(mut file) => {
-    //             if let Err(e) = io::copy(&mut file, &mut out) {
-    //                 if e.kind() == io::ErrorKind::BrokenPipe {
-    //                     return;
-    //                 }
-    //                 // eprintln!("cat: {}: {}", filename, e);
-    //             }
-    //         }
-    //         Err(e) => eprintln!("cat: {}: {}", filename, e),
-    //     }
-    // }
-
-    // let _ = out.flush();
 }
 
 pub fn ls(args: &mut [&str]) {

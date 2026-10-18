@@ -1,3 +1,6 @@
+use std::fs;
+use std::io;
+
 use crate::exec::{find_in_path};
 
 pub fn remove_trailing_new_line<'a, 'b>(args: &'a mut [&'b str]) -> &'a mut [&'b str] {
@@ -79,4 +82,9 @@ pub fn if_executable(input: &str) -> (bool, String, String, Vec<String>) {
     }
 
     (false, String::new(), String::new(), Vec::new())
+}
+
+pub fn read_file(path: &str) -> io::Result<String> {
+    let content = fs::read_to_string(path)?;
+    Ok(content)
 }
