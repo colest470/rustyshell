@@ -128,7 +128,6 @@ pub fn cat(args: &mut [&str]) {
                         let msg = e.to_string();
                         let clean = msg.split(" (os error").next().unwrap_or(&msg);
                         eprintln!("cat: {path}: {clean}");
-                        return;
                     }
                 }
             }
