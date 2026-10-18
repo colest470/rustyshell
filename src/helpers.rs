@@ -84,6 +84,42 @@ pub fn if_executable(input: &str) -> (bool, String, String, Vec<String>) {
     (false, String::new(), String::new(), Vec::new())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::tokenize;
+
+    #[test]
+    fn tokenize_removes_trailing_newline_from_paths() {
+        let tokens = tokenize("cat /tmp/dog/fox.md\n");
+        assert_eq!(tokens, vec!["cat".to_string(), "/tmp/dog/fox.md".to_string()]);
+    }
+
+    #[test]
+    fn tokenize_keeps_quoted_paths_with_spaces() {
+        let tokens = tokenize("cat /tmp/cow/\"number 60\" /tmp/cow/\"doublequote \\\" 28\"\n");
+        assert_eq!(
+            tokens,
+            vec![
+                "cat".to_string(),
+                "/tmp/cow/number 60".to_string(),
+                "/tmp/cow/doublequote \" 28".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenize_keeps_backslashes_in_quoted_paths() {
+        let tokens = tokenize("cat /tmp/cow/\"backslash \\\\ 24\"\n");
+        assert_eq!(
+            tokens,
+            vec![
+                "cat".to_string(),
+                "/tmp/cow/backslash \\ 24".to_string(),
+            ]
+        );
+    }
+}
+
 pub fn read_file(path: &str) -> io::Result<String> {
     let content = fs::read_to_string(path)?;
     Ok(content)
@@ -124,7 +160,7 @@ pub fn tokenize(input: &str) -> Vec<String> {
                     if let Some(n) = chars.next() { cur.push(n); }
                     started = true;
                 }
-                ' ' | '\t' => {
+                ' ' | '\t' | '\n' | '\r' => {
                     if started {
                         tokens.push(std::mem::take(&mut cur));
                         started = false;

@@ -22,22 +22,22 @@ fn main() {
         let command = parts[0];
         let args = &parts[1..];
 
-        let mut parts_echo: Vec<&str> = input_trimmed.split(' ').collect();
+        let tokens = helpers::tokenize(&input);
 
         match command {
             "exit" => break,
             "type" => builtin::builtins(args),
             "echo" => {
-                let args_echo = &mut parts_echo[1..];
-                builtin::echo(args_echo);
+                let mut args_echo: Vec<&str> = tokens.iter().skip(1).map(|s| s.as_str()).collect();
+                builtin::echo(&mut args_echo);
             }
             "cat" => {
-                let args_cat = &mut parts_echo[1..];
-                builtin::cat(args_cat);
+                let mut args_cat: Vec<&str> = tokens.iter().skip(1).map(|s| s.as_str()).collect();
+                builtin::cat(&mut args_cat);
             }
             "ls" => {
-                let args_ls = &mut parts_echo[1..];
-                builtin::ls(args_ls);
+                let mut args_ls: Vec<&str> = tokens.iter().skip(1).map(|s| s.as_str()).collect();
+                builtin::ls(&mut args_ls);
             }
             _ => {
                 let (is_executable_file, exec_command, path_to_file, exec_args) = 
