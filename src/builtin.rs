@@ -27,14 +27,12 @@ pub fn echo(input: &str) {
         return;
     }
 
-    // Strip a trailing newline from the last arg (from `remove_trailing_new_line`-like behavior)
     if let Some(last) = args.last_mut() {
         if let Some(stripped) = last.strip_suffix('\n') {
             *last = stripped.to_string();
         }
     }
 
-    // Detect redirection: `> file` or `1> file`
     let mut redirect_idx: Option<usize> = None;
     for (i, element) in args.iter().enumerate() {
         if element == ">" || element == "1>" {
@@ -111,49 +109,7 @@ fn split_echo_args(input: &str) -> Vec<String> {
 }
 
 pub fn cat(args: &mut [&str]) {
-    let redirect_pos = args.iter().position(|&x| x == "1>" || x == ">" || x == ">>");
-
-    match redirect_pos {
-        Some(i) => {
-            let paths = &args[..i];
-            let dest = args[i + 1..].join(" ");
-
-            let mut content = String::new();
-            for path in paths {
-                match read_file(path) {
-                    Ok(c) => content.push_str(&c),
-                    Err(e) => {
-                        let msg = e.to_string();
-                        let clean = msg.split(" (os error").next().unwrap_or(&msg);
-                        eprintln!("cat: {path}: {clean}");
-                    }
-                }
-            }
-            if let Some(parent) = std::path::Path::new(&dest).parent() {
-                if !parent.as_os_str().is_empty() {
-                    let _ = std::fs::create_dir_all(parent);
-                }
-            }
-
-            if let Err(e) = write_files(&content, dest.as_str()) {
-                let msg = e.to_string();
-                let clean = msg.split(" (os error").next().unwrap_or(&msg);
-                eprintln!("cat: {dest}: {clean}");
-            }
-        }
-        None => {
-            for path in args.iter() {
-                match read_file(path) {
-                    Ok(content) => print!("{content}"),
-                    Err(e) => {
-                        let msg = e.to_string();
-                        let clean = msg.split(" (os error").next().unwrap_or(&msg);
-                        eprintln!("cat: {path}: {clean}");
-                    }
-                }
-            }
-        }
-    }
+    print!("{:?}", args);
 }
 
 pub fn ls(args: &mut [&str]) {

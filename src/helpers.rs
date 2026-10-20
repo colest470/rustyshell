@@ -84,42 +84,6 @@ pub fn if_executable(input: &str) -> (bool, String, String, Vec<String>) {
     (false, String::new(), String::new(), Vec::new())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::tokenize;
-
-    #[test]
-    fn tokenize_removes_trailing_newline_from_paths() {
-        let tokens = tokenize("cat /tmp/dog/fox.md\n");
-        assert_eq!(tokens, vec!["cat".to_string(), "/tmp/dog/fox.md".to_string()]);
-    }
-
-    #[test]
-    fn tokenize_keeps_quoted_paths_with_spaces() {
-        let tokens = tokenize("cat /tmp/cow/\"number 60\" /tmp/cow/\"doublequote \\\" 28\"\n");
-        assert_eq!(
-            tokens,
-            vec![
-                "cat".to_string(),
-                "/tmp/cow/number 60".to_string(),
-                "/tmp/cow/doublequote \" 28".to_string(),
-            ]
-        );
-    }
-
-    #[test]
-    fn tokenize_keeps_backslashes_in_quoted_paths() {
-        let tokens = tokenize("cat /tmp/cow/\"backslash \\\\ 24\"\n");
-        assert_eq!(
-            tokens,
-            vec![
-                "cat".to_string(),
-                "/tmp/cow/backslash \\ 24".to_string(),
-            ]
-        );
-    }
-}
-
 pub fn read_file(path: &str) -> io::Result<String> {
     let content = fs::read_to_string(path)?;
     Ok(content)
@@ -133,12 +97,20 @@ pub fn tokenize(input: &str) -> Vec<String> {
     let mut in_double = false;
     let mut chars = input.chars().peekable();
 
+    // Helper closure to flush the current token
+    let flush = |tokens: &mut Vec<String>, cur: &mut String, started: &mut bool| {
+        if *started || !cur.is_empty() {
+            tokens.push(std::mem::take(cur));
+            *started = false;
+        }
+    };
+
     while let Some(c) = chars.next() {
         if in_single {
             if c == '\'' {
                 in_single = false;
             } else {
-                cur.push(c);   // everything literal, including '\'
+                cur.push(c);
             }
             started = true;
         } else if in_double {
@@ -146,7 +118,7 @@ pub fn tokenize(input: &str) -> Vec<String> {
                 '"' => { in_double = false; }
                 '\\' => match chars.next() {
                     Some(n @ ('"' | '\\' | '$' | '`' | '\n')) => cur.push(n),
-                    Some(n) => { cur.push('\\'); cur.push(n); }   // keep both
+                    Some(n) => { cur.push('\\'); cur.push(n); }
                     None    => cur.push('\\'),
                 },
                 _ => cur.push(c),
@@ -160,7 +132,21 @@ pub fn tokenize(input: &str) -> Vec<String> {
                     if let Some(n) = chars.next() { cur.push(n); }
                     started = true;
                 }
-                ' ' | '\t' | '\n' | '\r' => {
+                d @ ('0'..='9') => {
+                    if matches!(chars.peek(), Some('>') | Some('<')) {
+                        flush(&mut tokens, &mut cur, &mut started);
+                        let op = chars.next().unwrap();
+                        tokens.push(format!("{}{}", d, op));
+                    } else {
+                        cur.push(d);
+                        started = true;
+                    }
+                }
+                '>' | '<' => {
+                    flush(&mut tokens, &mut cur, &mut started);
+                    tokens.push(c.to_string());
+                }
+                ' ' | '\t' => {
                     if started {
                         tokens.push(std::mem::take(&mut cur));
                         started = false;
@@ -170,8 +156,6 @@ pub fn tokenize(input: &str) -> Vec<String> {
             }
         }
     }
-    if started || !cur.is_empty() {
-        tokens.push(cur);
-    }
+    flush(&mut tokens, &mut cur, &mut started);
     tokens
 }

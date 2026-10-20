@@ -1,5 +1,7 @@
 use std::io::{self, Write};
 
+use crate::helpers::tokenize;
+
 mod builtin;
 mod exec;
 mod helpers;
@@ -31,7 +33,9 @@ fn main() {
                 builtin::echo(input_trimmed);
             }
             "cat" => {
-                let mut args_cat: Vec<&str> = tokens.iter().skip(1).map(|s| s.as_str()).collect();
+                let tokenized_strings = tokenize(&input); 
+                let mut args_cat: Vec<&str> = tokenized_strings.iter().map(|s| s.as_str()).collect();
+                
                 builtin::cat(&mut args_cat);
             }
             "ls" => {
