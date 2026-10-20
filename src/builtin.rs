@@ -18,6 +18,36 @@ pub fn builtins (args: &[&str]) {
     }
 }
 
+pub fn split_redirection_args(tokens: &[String]) -> (Vec<&str>, Option<&str>, Option<&str>) {
+    let mut args = Vec::new();
+    let mut stdout_redirect = None;
+    let mut stderr_redirect = None;
+    let mut i = 0;
+
+    while i < tokens.len() {
+        match tokens[i].as_str() {
+            ">" | "1>" => {
+                if i + 1 < tokens.len() {
+                    stdout_redirect = Some(tokens[i + 1].as_str());
+                }
+                i += 2;
+            }
+            "2>" => {
+                if i + 1 < tokens.len() {
+                    stderr_redirect = Some(tokens[i + 1].as_str());
+                }
+                i += 2;
+            }
+            token => {
+                args.push(token);
+                i += 1;
+            }
+        }
+    }
+
+    (args, stdout_redirect, stderr_redirect)
+}
+
 pub fn echo(input: &str) {
     let remainder = input.strip_prefix("echo").unwrap_or(input).trim_start();
     let args = split_echo_args(remainder);
@@ -111,7 +141,11 @@ fn split_echo_args(input: &str) -> Vec<String> {
 pub fn cat(args: &mut [&str], out: &mut impl Write, err: &mut impl Write) {
     remove_trailing_new_line(args);
 
-    let rest = &args[1..];
+    let rest = if args.first().is_some_and(|arg| *arg == "cat") {
+        &args[1..]
+    } else {
+        args
+    };
 
     if rest.is_empty() {
         let stdin = io::stdin();
@@ -193,6 +227,28 @@ fn clean_io(e: &io::Error) -> String {
     match s.find(" (os error ") {
         Some(i) => s[..i].to_string(),
         None => s,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::split_redirection_args;
+
+    #[test]
+    fn cat_redirect_keeps_first_file_and_command_in_args() {
+        let tokens = vec![
+            "cat".to_string(),
+            "/tmp/bee/orange".to_string(),
+            "nonexistent".to_string(),
+            "1>".to_string(),
+            "/tmp/ant/owl.md".to_string(),
+        ];
+
+        let (args, stdout_redirect, stderr_redirect) = split_redirection_args(&tokens);
+
+        assert_eq!(args, vec!["cat", "/tmp/bee/orange", "nonexistent"]);
+        assert_eq!(stdout_redirect, Some("/tmp/ant/owl.md"));
+        assert_eq!(stderr_redirect, None);
     }
 }
 

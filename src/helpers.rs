@@ -135,7 +135,11 @@ pub fn tokenize(input: &str) -> Vec<String> {
     // Helper closure to flush the current token
     let flush = |tokens: &mut Vec<String>, cur: &mut String, started: &mut bool| {
         if *started || !cur.is_empty() {
-            tokens.push(std::mem::take(cur));
+            let mut value = std::mem::take(cur);
+            while value.ends_with('\n') || value.ends_with('\r') {
+                value.pop();
+            }
+            tokens.push(value);
             *started = false;
         }
     };

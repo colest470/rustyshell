@@ -40,32 +40,8 @@ fn main() {
                 let mut stdout_buffer: Vec<u8> = Vec::new();
                 let mut stderr_buffer: Vec<u8> = Vec::new();
 
-                let mut stdout_redirect: Option<&str> = None;
-                let mut stderr_redirect: Option<&str> = None;
-                let mut args_cat: Vec<&str> = Vec::new();
-
-                let mut i = 0;
-
-                while i < tokenized_strings.len() {
-                    match tokenized_strings[i].as_str() {
-                        ">" | "1>" => {
-                            if i + 1 < tokenized_strings.len() {
-                                stdout_redirect = Some(&tokenized_strings[i + 1]);
-                            }
-                            i += 2;
-                        }
-                        "2>" => {
-                            if i + 1 < tokenized_strings.len() {
-                                stderr_redirect = Some(&tokenized_strings[i + 1]);
-                            }
-                            i += 2;
-                        }
-                        other => {
-                            args_cat.push(other);
-                            i += 1;
-                        }
-                    }
-                }
+                let (mut args_cat, stdout_redirect, stderr_redirect) =
+                    builtin::split_redirection_args(&tokenized_strings);
 
                 builtin::cat(
                     &mut args_cat,
