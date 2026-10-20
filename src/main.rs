@@ -1,4 +1,5 @@
 use std::io::{self, Write};
+use std::fs;
 
 use crate::helpers::tokenize;
 
@@ -32,12 +33,65 @@ fn main() {
             "echo" => {
                 builtin::echo(input_trimmed);
             }
+            
             "cat" => {
-                let tokenized_strings = tokenize(&input); 
-                let mut args_cat: Vec<&str> = tokenized_strings.iter().map(|s| s.as_str()).collect();
-                
-                builtin::cat(&mut args_cat);
+                let tokenized_strings = tokenize(&input);
+
+                let mut stdout_buffer: Vec<u8> = Vec::new();
+                let mut stderr_buffer: Vec<u8> = Vec::new();
+
+                let mut stdout_redirect: Option<&str> = None;
+                let mut stderr_redirect: Option<&str> = None;
+                let mut args_cat: Vec<&str> = Vec::new();
+
+                let mut i = 0;
+
+                while i < tokenized_strings.len() {
+                    match tokenized_strings[i].as_str() {
+                        ">" | "1>" => {
+                            if i + 1 < tokenized_strings.len() {
+                                stdout_redirect = Some(&tokenized_strings[i + 1]);
+                            }
+                            i += 2;
+                        }
+                        "2>" => {
+                            if i + 1 < tokenized_strings.len() {
+                                stderr_redirect = Some(&tokenized_strings[i + 1]);
+                            }
+                            i += 2;
+                        }
+                        other => {
+                            args_cat.push(other);
+                            i += 1;
+                        }
+                    }
+                }
+
+                builtin::cat(
+                    &mut args_cat,
+                    &mut stdout_buffer,
+                    &mut stderr_buffer,
+                );
+
+                // Handle stdout redirection.
+                if let Some(filename) = stdout_redirect {
+                    if let Err(e) = fs::write(filename, &stdout_buffer) {
+                        eprintln!("cat: {}: {}", filename, e);
+                    }
+                } else {
+                    let _ = io::stdout().write_all(&stdout_buffer);
+                }
+
+                // Handle stderr redirection.
+                if let Some(filename) = stderr_redirect {
+                    if let Err(e) = fs::write(filename, &stderr_buffer) {
+                        eprintln!("cat: {}: {}", filename, e);
+                    }
+                } else {
+                    let _ = io::stderr().write_all(&stderr_buffer);
+                }
             }
+
             "ls" => {
                 let mut args_ls: Vec<&str> = tokens.iter().skip(1).map(|s| s.as_str()).collect();
                 builtin::ls(&mut args_ls);

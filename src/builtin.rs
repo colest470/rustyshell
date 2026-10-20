@@ -121,7 +121,7 @@ fn split_echo_args(input: &str) -> Vec<String> {
     args
 }
 
-pub fn cat(args: &mut [&str], err: &mut impl Write){
+pub fn cat(args: &mut [&str], out: &mut impl Write, err: &mut impl Write){
     remove_trailing_new_line(args);
 
     let rest = &args[1..];
@@ -145,20 +145,16 @@ pub fn cat(args: &mut [&str], err: &mut impl Write){
 
     let mut paths: Vec<&str> = Vec::new();
     let mut i = 0;
+
     while i < rest.len() {
         match rest[i] {
-            ">" | "1>" | "2>" => {
-                break;
-            }
+            ">" | "1>" | "2>" => break,
             other => {
                 paths.push(other);
                 i += 1;
             }
         }
     }
-
-    let stdout = io::stdout();
-    let mut out = stdout.lock();
 
     for path in paths {
         match File::open(path) {
