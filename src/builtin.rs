@@ -159,23 +159,25 @@ pub fn ls(args: &mut [&str]) {
                 }
             }
 
-            match File::create(file_name) {
-                Ok(mut file) => {
-                    let stdout = io::stdout();
-                    let mut out_lock = stdout.lock();
-                    let stderr = io::stderr();
-                    let mut err_lock = stderr.lock();
+        match File::create(file_name) {
+            Ok(mut file) => {
+                let stdout = io::stdout();
+                let mut out_lock = stdout.lock();
+                let stderr = io::stderr();
+                let mut err_lock = stderr.lock();
 
-                    if is_stderr {
-                        // 2>: Normal output goes to terminal stdout, errors go to the file
-                        execute_ls(ls_args, &mut out_lock, &mut file);
-                    } else {
-                        // > or 1>: Normal output goes to the file, errors go to terminal stderr
-                        execute_ls(ls_args, &mut file, &mut err_lock);
-                    }
+                if is_stderr {
+                    execute_ls(ls_args, &mut out_lock, &mut file);
+                } else {
+                    execute_ls(ls_args, &mut file, &mut err_lock);
                 }
-                Err(e) => eprintln!("ls: {}: {}", file_name, e),
             }
+            Err(e) => {
+                let err_msg = e.to_string();
+                let clean_msg = err_msg.split(" (os error").next().unwrap_or(&err_msg);
+                eprintln!("ls: {}: {}", file_name, clean_msg);
+            }
+        }
             return;
         }
     }
