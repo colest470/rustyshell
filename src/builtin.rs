@@ -124,7 +124,7 @@ pub fn cat(args: &mut [&str]) {
         // else if *element == "2>" {}
     }
 
-    for (i, element) in last_args.iter().enumerate() { 
+    for element in last_args { 
         println!("{:?}", read_file(*element));
     }
 }
@@ -138,6 +138,8 @@ pub fn ls(args: &mut [&str]) {
         if *element == ">" || *element == "1>" {
             redirect_idx = Some(i);
             break;
+        } else if *element == "2>" {
+            //redirect_idx = Some(i); implement this one
         }
     }
 
@@ -168,51 +170,40 @@ pub fn ls(args: &mut [&str]) {
 }
 
 fn execute_ls(args: &[&str], out: &mut impl Write) {
-    let full_args_str = args.join(" ");
-    let unquoted_args = unquote(&full_args_str);
+    // args does NOT include "ls" — caller strips argv[0]
+    let mut targets: Vec<&str> = args.iter()
+        .copied()
+        .filter(|a| !a.is_empty() && !a.starts_with('-'))
+        .collect();
 
-    let mut target_paths: Vec<String> = Vec::new();
-
-    for arg in unquoted_args {
-        let trimmed = arg.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-        if trimmed.starts_with('-') {
-            continue;
-        }
-        target_paths.push(trimmed.to_string());
+    if targets.is_empty() {
+        targets.push(".");
     }
 
-    if target_paths.is_empty() {
-        target_paths.push(".".to_string());
-    }
-
-    for filename in &target_paths {
-        match fs::read_dir(filename) {
-            Ok(entries) => {
-                let mut names: Vec<String> = Vec::new();
-                for entry in entries {
-                    match entry {
-                        Ok(entry) => {
-                            names.push(entry.file_name().to_string_lossy().into_owned());
-                        }
-                        Err(e) => eprintln!("ls: {}: {}", filename, e),
-                    }
-                }
-                names.sort();
-
-                for name in names {
-                    if let Err(e) = writeln!(out, "{}", name) {
-                        if e.kind() == io::ErrorKind::BrokenPipe {
-                            return;
+    for name in targets {
+        let p = Path::new(name);
+        if p.is_dir() {
+            match fs::read_dir(p) {
+                Ok(rd) => {
+                    let mut names: Vec<String> = Vec::new();
+                    for e in rd {
+                        match e {
+                            Ok(e) => names.push(e.file_name().to_string_lossy().into_owned()),
+                            Err(e) => eprintln!("ls: {}: {}", name, e),
                         }
                     }
+                    names.sort();
+                    for n in names {
+                        if writeln!(out, "{}", n).is_err() { return; }
+                    }
                 }
+                Err(e) => eprintln!("ls: {}: {}", name, e),
             }
-            Err(e) => eprintln!("ls: {}: {}", filename, e),
+        } else if p.exists() {
+            if writeln!(out, "{}", name).is_err() { return; }
+        } else {
+            eprintln!("ls: {}: No such file or directory", name);
         }
     }
-
     let _ = out.flush();
 }
