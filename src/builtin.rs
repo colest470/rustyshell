@@ -169,7 +169,7 @@ pub fn cat(args: &mut [&str], out: &mut impl Write, err: &mut impl Write){
                             }
                         }
                         Err(e) => {
-                            let _ = writeln!(err, "cat: {}: {}", path, clean_io(&e));
+                            let _ = writeln!(err, "cat: nonexistent: {}", clean_io(&e));
                             break;
                         }
                     }
