@@ -220,7 +220,9 @@ fn execute_ls(args: &[&str], out: &mut impl Write, err: &mut impl Write) {
                             names.push(entry.file_name().to_string_lossy().into_owned());
                         }
                         Err(e) => {
-                            let _ = writeln!(err, "ls: {}: {}", filename, e);
+                            let err_msg = e.to_string();
+                            let clean_msg = err_msg.split(" (os error").next().unwrap_or(&err_msg);
+                            let _ = writeln!(err, "ls: {}: {}", filename, clean_msg);
                         }
                     }
                 }
@@ -235,7 +237,9 @@ fn execute_ls(args: &[&str], out: &mut impl Write, err: &mut impl Write) {
                 }
             }
             Err(e) => {
-                let _ = writeln!(err, "ls: {}: {}", filename, e);
+                let err_msg = e.to_string();
+                let clean_msg = err_msg.split(" (os error").next().unwrap_or(&err_msg);
+                let _ = writeln!(err, "ls: {}: {}", filename, clean_msg);
             }
         }
     }
