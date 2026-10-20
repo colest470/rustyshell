@@ -107,47 +107,62 @@ fn split_echo_args(input: &str) -> Vec<String> {
     args
 }
 
-pub fn cat(args: &mut [&str], out: &mut impl Write, err: &mut impl Write){
+
+pub fn cat(args: &mut [&str], out: &mut impl Write, err: &mut impl Write) {
     remove_trailing_new_line(args);
 
     let rest = &args[1..];
 
+    // Read from stdin when no file paths are provided.
     if rest.is_empty() {
         let stdin = io::stdin();
         let mut lock = stdin.lock();
-        let stdout = io::stdout();
-        let mut out = stdout.lock();
         let mut buf = [0u8; 8192];
+
         loop {
             match lock.read(&mut buf) {
                 Ok(0) => break,
-                Ok(n) => { let _ = out.write_all(&buf[..n]); }
-                Err(_) => break,
+                Ok(n) => {
+                    if out.write_all(&buf[..n]).is_err() {
+                        return;
+                    }
+                }
+                Err(e) => {
+                    let _ = writeln!(err, "cat: {}", clean_io(&e));
+                    break;
+                }
             }
         }
+
         let _ = out.flush();
+        let _ = err.flush();
         return;
     }
 
+    // Collect file paths, excluding redirection operators and targets.
     let mut paths: Vec<&str> = Vec::new();
     let mut i = 0;
 
     while i < rest.len() {
         match rest[i] {
-            ">" | "1>" | "2>" => break,
-            other => {
-                paths.push(other);
+            ">" | "1>" | "2>" => {
+                break;
+            }
+            path => {
+                paths.push(path);
                 i += 1;
             }
         }
     }
 
+    // Read each file. Keep stdout and stderr separate.
     for path in paths {
         match File::open(path) {
-            Ok(mut f) => {
+            Ok(mut file) => {
                 let mut buf = [0u8; 8192];
+
                 loop {
-                    match f.read(&mut buf) {
+                    match file.read(&mut buf) {
                         Ok(0) => break,
                         Ok(n) => {
                             if out.write_all(&buf[..n]).is_err() {
@@ -155,21 +170,33 @@ pub fn cat(args: &mut [&str], out: &mut impl Write, err: &mut impl Write){
                             }
                         }
                         Err(e) => {
-                            let _ = writeln!(err, "cat: {}: {}", path, clean_io(&e));
+                            let _ = writeln!(
+                                err,
+                                "cat: {}: {}",
+                                path,
+                                clean_io(&e)
+                            );
                             break;
                         }
                     }
                 }
             }
             Err(e) => {
-                let _ = writeln!(err, "cat: nonexistent: {}", clean_io(&e));
+                let _ = writeln!(
+                    err,
+                    "cat: {}: {}",
+                    path,
+                    clean_io(&e)
+                );
             }
         }
     }
+
     let _ = out.flush();
+    let _ = err.flush();
 }
 
-/// Strip the ` (os error N)` suffix so messages match real `cat`.
+
 fn clean_io(e: &io::Error) -> String {
     let s = e.to_string();
     match s.find(" (os error ") {
