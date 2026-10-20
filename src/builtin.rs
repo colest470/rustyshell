@@ -109,7 +109,24 @@ fn split_echo_args(input: &str) -> Vec<String> {
 }
 
 pub fn cat(args: &mut [&str]) {
-    print!("{:?}", args);
+    remove_trailing_new_line(args);
+    
+    //print!("{:?}", args);
+    let last_args = &args[1..];
+    //print!("{:?}", last_args);
+
+    for (i, element) in last_args.iter().enumerate() {
+        if *element == ">" || *element == "1>" {
+            
+
+            break;
+        } 
+        // else if *element == "2>" {}
+    }
+
+    for (i, element) in last_args.iter().enumerate() { 
+        println!("{:?}", read_file(*element));
+    }
 }
 
 pub fn ls(args: &mut [&str]) {
