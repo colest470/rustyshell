@@ -121,7 +121,7 @@ fn split_echo_args(input: &str) -> Vec<String> {
     args
 }
 
-pub fn cat(args: &mut [&str], out: &mut impl Write, err: &mut impl Write){
+pub fn cat(args: &mut [&str], err: &mut impl Write){
     remove_trailing_new_line(args);
 
     let rest = &args[1..];
