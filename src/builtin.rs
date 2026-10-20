@@ -148,7 +148,6 @@ pub fn cat(args: &mut [&str], out: &mut impl Write, err: &mut impl Write){
     while i < rest.len() {
         match rest[i] {
             ">" | "1>" | "2>" => {
-                i += 2;
                 break;
             }
             other => {
@@ -157,7 +156,7 @@ pub fn cat(args: &mut [&str], out: &mut impl Write, err: &mut impl Write){
             }
         }
     }
-    
+
     let stdout = io::stdout();
     let mut out = stdout.lock();
 
