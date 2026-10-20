@@ -34,9 +34,13 @@ pub fn echo(input: &str) {
     }
 
     let mut redirect_idx: Option<usize> = None;
+    let mut stderr_redirect_idx: Option<usize> = None;
     for (i, element) in args.iter().enumerate() {
         if element == ">" || element == "1>" {
             redirect_idx = Some(i);
+            break;
+        } else if element == "2>" {
+            stderr_redirect_idx = Some(i);
             break;
         }
     }
@@ -48,18 +52,27 @@ pub fn echo(input: &str) {
 
     let content = content_args.join(" ");
 
-    if let Some(i) = redirect_idx {
-        if i + 1 < args.len() {
-            let file_name = args[i + 1].as_str();
-            let content_with_newline = format!("{}\n", content);
-            if let Err(e) = write_files(&content_with_newline, file_name) {
-                eprintln!("echo: {}: {}", file_name, e);
-            }
-        } else {
-            eprintln!("echo: syntax error: expected filename after '>'");
+if let Some(i) = stderr_redirect_idx {
+    if i + 1 < args.len() {
+        let file_name = args[i + 1].as_str();
+
+        if let Err(e) = write_files("", file_name) {
+            eprintln!("echo: {}: {}", file_name, e);
         }
-        return;
+    } else {
+        eprintln!("echo: syntax error: expected filename after '2>'");
     }
+
+    let content_args: Vec<&str> = args
+        .iter()
+        .take(i)
+        .filter(|s| !s.is_empty())
+        .map(String::as_str)
+        .collect();
+
+    println!("{}", content_args.join(" "));
+    return;
+}
 
     println!("{}", content);
 }
