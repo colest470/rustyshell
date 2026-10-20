@@ -70,7 +70,7 @@ if let Some(i) = stderr_redirect_idx {
         .map(String::as_str)
         .collect();
 
-    println!("{}", content_args.join(" "));
+    //println!("{}", content_args.join(" "));
     return;
 }
 
