@@ -20,61 +20,47 @@ pub fn builtins (args: &[&str]) {
 
 pub fn echo(input: &str) {
     let remainder = input.strip_prefix("echo").unwrap_or(input).trim_start();
-    let mut args = split_echo_args(remainder);
+    let args = split_echo_args(remainder);
 
-    if args.is_empty() {
-        println!();
+    // Find stdout redirect
+    let stdout_idx = args.iter().position(|a| a == ">" || a == "1>");
+    // Find stderr redirect
+    let stderr_idx = args.iter().position(|a| a == "2>");
+
+    // Content = everything up to the first redirect operator
+    let first_redirect = [stdout_idx, stderr_idx].into_iter().flatten().min();
+    let content_end = first_redirect.unwrap_or(args.len());
+    let content = args[..content_end].join(" ");
+
+    // Handle stdout redirect: write to file and return
+    if let Some(i) = stdout_idx {
+        if i + 1 < args.len() {
+            let fname = &args[i + 1];
+            if let Err(e) = write_files(&format!("{}\n", content), fname) {
+                eprintln!("echo: {}: {}", fname, e);
+            }
+        } else {
+            eprintln!("echo: syntax error: expected filename after '>'");
+        }
         return;
     }
 
-    if let Some(last) = args.last_mut() {
-        if let Some(stripped) = last.strip_suffix('\n') {
-            *last = stripped.to_string();
+    if let Some(i) = stderr_idx {
+        if i + 1 < args.len() {
+            let fname = &args[i + 1];
+            if let Err(e) = write_files("", fname) {
+                eprintln!("echo: {}: {}", fname, e);
+            }
+        } else {
+            eprintln!("echo: syntax error: expected filename after '2>'");
         }
     }
 
-    let mut redirect_idx: Option<usize> = None;
-    let mut stderr_redirect_idx: Option<usize> = None;
-    for (i, element) in args.iter().enumerate() {
-        if element == ">" || element == "1>" {
-            redirect_idx = Some(i);
-            break;
-        } else if element == "2>" {
-            stderr_redirect_idx = Some(i);
-            break;
-        }
-    }
-
-    let content_args: Vec<&str> = match redirect_idx {
-        Some(i) => args.iter().take(i).filter(|s| !s.is_empty()).map(String::as_str).collect(),
-        None => args.iter().filter(|s| !s.is_empty()).map(String::as_str).collect(),
-    };
-
-    let content = content_args.join(" ");
-
-if let Some(i) = stderr_redirect_idx {
-    if i + 1 < args.len() {
-        let file_name = args[i + 1].as_str();
-
-        if let Err(e) = write_files("", file_name) {
-            eprintln!("echo: {}: {}", file_name, e);
-        }
+    if content.is_empty() {
+        println!();
     } else {
-        eprintln!("echo: syntax error: expected filename after '2>'");
+        println!("{}", content);
     }
-
-    let content_args: Vec<&str> = args
-        .iter()
-        .take(i)
-        .filter(|s| !s.is_empty())
-        .map(String::as_str)
-        .collect();
-
-    //println!("{}", content_args.join(" "));
-    return;
-}
-
-    println!("{}", content);
 }
 
 fn split_echo_args(input: &str) -> Vec<String> {
