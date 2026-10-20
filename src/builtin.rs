@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 use std::path::Path;
 use std::fs;
 
@@ -110,29 +110,90 @@ fn split_echo_args(input: &str) -> Vec<String> {
 
 pub fn cat(args: &mut [&str]) {
     remove_trailing_new_line(args);
-    
-    //print!("{:?}", args);
-    let last_args = &args[1..];
-    //print!("{:?}", last_args);
 
-    for (i, element) in last_args.iter().enumerate() {
-        if *element == ">" || *element == "1>" {
-            
+    let rest = &args[1..];
 
-            break;
-        } 
-        // else if *element == "2>" {}
+    // Nothing to read from → echo stdin to stdout (like real cat)
+    if rest.is_empty() {
+        let stdin = io::stdin();
+        let mut lock = stdin.lock();
+        let stdout = io::stdout();
+        let mut out = stdout.lock();
+        let mut buf = [0u8; 8192];
+        loop {
+            match lock.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => { let _ = out.write_all(&buf[..n]); }
+                Err(_) => break,
+            }
+        }
+        let _ = out.flush();
+        return;
     }
 
-    for element in last_args { 
-        println!("{:?}", read_file(*element));
+    // Collect path arguments, stopping at a redirection operator.
+    // (If the dispatcher already stripped redirections, this loop just
+    // copies every element — harmless.)
+    let mut paths: Vec<&str> = Vec::new();
+    let mut i = 0;
+    while i < rest.len() {
+        match rest[i] {
+            ">" | "1>" | "2>" => {
+                // skip operator + its target path
+                i += 2;
+                break;
+            }
+            other => {
+                paths.push(other);
+                i += 1;
+            }
+        }
+    }
+
+    let stdout = io::stdout();
+    let mut out = stdout.lock();
+
+    for path in paths {
+        match File::open(path) {
+            Ok(mut f) => {
+                let mut buf = [0u8; 8192];
+                loop {
+                    match f.read(&mut buf) {
+                        Ok(0) => break,
+                        Ok(n) => {
+                            if out.write_all(&buf[..n]).is_err() {
+                                return;
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("cat: {}: {}", path, clean_io(&e));
+                            break;
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                // eprintln → stderr, so `cat missing 1> file` puts the
+                // error on the terminal and the file stays empty.
+                eprintln!("cat: {}: {}", path, clean_io(&e));
+            }
+        }
+    }
+    let _ = out.flush();
+}
+
+/// Strip the ` (os error N)` suffix so messages match real `cat`.
+fn clean_io(e: &io::Error) -> String {
+    let s = e.to_string();
+    match s.find(" (os error ") {
+        Some(i) => s[..i].to_string(),
+        None => s,
     }
 }
 
 pub fn ls(args: &mut [&str]) {
     remove_trailing_new_line(args);
 
-    // 1. Look for redirection operator ('>', '1>', or '2>') anywhere in args
     let mut redirect_idx = None;
     let mut is_stderr = false;
 
