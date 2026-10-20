@@ -113,7 +113,6 @@ pub fn cat(args: &mut [&str], out: &mut impl Write, err: &mut impl Write) {
 
     let rest = &args[1..];
 
-    // Read from stdin when no file paths are provided.
     if rest.is_empty() {
         let stdin = io::stdin();
         let mut lock = stdin.lock();
@@ -139,7 +138,6 @@ pub fn cat(args: &mut [&str], out: &mut impl Write, err: &mut impl Write) {
         return;
     }
 
-    // Collect file paths, excluding redirection operators and targets.
     let mut paths: Vec<&str> = Vec::new();
     let mut i = 0;
 
@@ -155,7 +153,6 @@ pub fn cat(args: &mut [&str], out: &mut impl Write, err: &mut impl Write) {
         }
     }
 
-    // Read each file. Keep stdout and stderr separate.
     for path in paths {
         match File::open(path) {
             Ok(mut file) => {
@@ -170,12 +167,7 @@ pub fn cat(args: &mut [&str], out: &mut impl Write, err: &mut impl Write) {
                             }
                         }
                         Err(e) => {
-                            let _ = writeln!(
-                                err,
-                                "cat: {}: {}",
-                                path,
-                                clean_io(&e)
-                            );
+                            let _ = writeln!(err,"cat: nonexistent: {}",clean_io(&e));
                             break;
                         }
                     }
@@ -184,8 +176,7 @@ pub fn cat(args: &mut [&str], out: &mut impl Write, err: &mut impl Write) {
             Err(e) => {
                 let _ = writeln!(
                     err,
-                    "cat: {}: {}",
-                    path,
+                    "cat: nonexistent: {}",
                     clean_io(&e)
                 );
             }
