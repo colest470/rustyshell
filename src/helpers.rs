@@ -14,6 +14,41 @@ pub fn remove_trailing_new_line<'a, 'b>(args: &'a mut [&'b str]) -> &'a mut [&'b
     }
     args
 }
+#[cfg(test)]
+mod tests {
+    use super::tokenize;
+
+    #[test]
+    fn tokenize_removes_trailing_newline_from_paths() {
+        let tokens = tokenize("cat /tmp/dog/fox.md\n");
+        assert_eq!(tokens, vec!["cat".to_string(), "/tmp/dog/fox.md".to_string()]);
+    }
+
+    #[test]
+    fn tokenize_keeps_quoted_paths_with_spaces() {
+        let tokens = tokenize("cat /tmp/cow/\"number 60\" /tmp/cow/\"doublequote \\\" 28\"\n");
+        assert_eq!(
+            tokens,
+            vec![
+                "cat".to_string(),
+                "/tmp/cow/number 60".to_string(),
+                "/tmp/cow/doublequote \" 28".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenize_keeps_backslashes_in_quoted_paths() {
+        let tokens = tokenize("cat /tmp/cow/\"backslash \\\\ 24\"\n");
+        assert_eq!(
+            tokens,
+            vec![
+                "cat".to_string(),
+                "/tmp/cow/backslash \\ 24".to_string(),
+            ]
+        );
+    }
+}
 
 
 pub fn unquote(arg: &str) -> Vec<String> {
