@@ -121,12 +121,11 @@ fn split_echo_args(input: &str) -> Vec<String> {
     args
 }
 
-pub fn cat(args: &mut [&str]) {
+pub fn cat(args: &mut [&str], out: &mut impl Write, err: &mut impl Write){
     remove_trailing_new_line(args);
 
     let rest = &args[1..];
 
-    // Nothing to read from → echo stdin to stdout (like real cat)
     if rest.is_empty() {
         let stdin = io::stdin();
         let mut lock = stdin.lock();
@@ -144,15 +143,11 @@ pub fn cat(args: &mut [&str]) {
         return;
     }
 
-    // Collect path arguments, stopping at a redirection operator.
-    // (If the dispatcher already stripped redirections, this loop just
-    // copies every element — harmless.)
     let mut paths: Vec<&str> = Vec::new();
     let mut i = 0;
     while i < rest.len() {
         match rest[i] {
             ">" | "1>" | "2>" => {
-                // skip operator + its target path
                 i += 2;
                 break;
             }
@@ -162,7 +157,7 @@ pub fn cat(args: &mut [&str]) {
             }
         }
     }
-
+    
     let stdout = io::stdout();
     let mut out = stdout.lock();
 
@@ -179,16 +174,14 @@ pub fn cat(args: &mut [&str]) {
                             }
                         }
                         Err(e) => {
-                            eprintln!("cat: {}: {}", path, clean_io(&e));
+                            let _ = writeln!(err, "cat: {}: {}", path, clean_io(&e));
                             break;
                         }
                     }
                 }
             }
             Err(e) => {
-                // eprintln → stderr, so `cat missing 1> file` puts the
-                // error on the terminal and the file stays empty.
-                eprintln!("cat: {}: {}", path, clean_io(&e));
+                let _ = writeln!(err, "cat: {}: {}", path, clean_io(&e));
             }
         }
     }
