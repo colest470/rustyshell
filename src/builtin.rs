@@ -132,14 +132,19 @@ pub fn cat(args: &mut [&str]) {
 pub fn ls(args: &mut [&str]) {
     remove_trailing_new_line(args);
 
-    // 1. Look for redirection operator ('>' or '1>') anywhere in args
+    // 1. Look for redirection operator ('>', '1>', or '2>') anywhere in args
     let mut redirect_idx = None;
+    let mut is_stderr = false;
+
     for (i, element) in args.iter().enumerate() {
         if *element == ">" || *element == "1>" {
             redirect_idx = Some(i);
+            is_stderr = false;
             break;
         } else if *element == "2>" {
-            //redirect_idx = Some(i); implement this one
+            redirect_idx = Some(i);
+            is_stderr = true;
+            break;
         }
     }
 
@@ -156,7 +161,18 @@ pub fn ls(args: &mut [&str]) {
 
             match File::create(file_name) {
                 Ok(mut file) => {
-                    execute_ls(ls_args, &mut file);
+                    let stdout = io::stdout();
+                    let mut out_lock = stdout.lock();
+                    let stderr = io::stderr();
+                    let mut err_lock = stderr.lock();
+
+                    if is_stderr {
+                        // 2>: Normal output goes to terminal stdout, errors go to the file
+                        execute_ls(ls_args, &mut out_lock, &mut file);
+                    } else {
+                        // > or 1>: Normal output goes to the file, errors go to terminal stderr
+                        execute_ls(ls_args, &mut file, &mut err_lock);
+                    }
                 }
                 Err(e) => eprintln!("ls: {}: {}", file_name, e),
             }
@@ -166,44 +182,62 @@ pub fn ls(args: &mut [&str]) {
 
     let stdout = io::stdout();
     let mut out = stdout.lock();
-    execute_ls(args, &mut out);
+    let stderr = io::stderr();
+    let mut err = stderr.lock();
+    execute_ls(args, &mut out, &mut err);
 }
 
-fn execute_ls(args: &[&str], out: &mut impl Write) {
-    // args does NOT include "ls" — caller strips argv[0]
-    let mut targets: Vec<&str> = args.iter()
-        .copied()
-        .filter(|a| !a.is_empty() && !a.starts_with('-'))
-        .collect();
+fn execute_ls(args: &[&str], out: &mut impl Write, err: &mut impl Write) {
+    let full_args_str = args.join(" ");
+    let unquoted_args = unquote(&full_args_str);
 
-    if targets.is_empty() {
-        targets.push(".");
+    let mut target_paths: Vec<String> = Vec::new();
+
+    for arg in unquoted_args {
+        let trimmed = arg.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if trimmed.starts_with('-') {
+            continue;
+        }
+        target_paths.push(trimmed.to_string());
     }
 
-    for name in targets {
-        let p = Path::new(name);
-        if p.is_dir() {
-            match fs::read_dir(p) {
-                Ok(rd) => {
-                    let mut names: Vec<String> = Vec::new();
-                    for e in rd {
-                        match e {
-                            Ok(e) => names.push(e.file_name().to_string_lossy().into_owned()),
-                            Err(e) => eprintln!("ls: {}: {}", name, e),
+    if target_paths.is_empty() {
+        target_paths.push(".".to_string());
+    }
+
+    for filename in &target_paths {
+        match fs::read_dir(filename) {
+            Ok(entries) => {
+                let mut names: Vec<String> = Vec::new();
+                for entry in entries {
+                    match entry {
+                        Ok(entry) => {
+                            names.push(entry.file_name().to_string_lossy().into_owned());
+                        }
+                        Err(e) => {
+                            let _ = writeln!(err, "ls: {}: {}", filename, e);
                         }
                     }
-                    names.sort();
-                    for n in names {
-                        if writeln!(out, "{}", n).is_err() { return; }
+                }
+                names.sort();
+
+                for name in names {
+                    if let Err(e) = writeln!(out, "{}", name) {
+                        if e.kind() == io::ErrorKind::BrokenPipe {
+                            return;
+                        }
                     }
                 }
-                Err(e) => eprintln!("ls: {}: {}", name, e),
             }
-        } else if p.exists() {
-            if writeln!(out, "{}", name).is_err() { return; }
-        } else {
-            eprintln!("ls: {}: No such file or directory", name);
+            Err(e) => {
+                let _ = writeln!(err, "ls: {}: {}", filename, e);
+            }
         }
     }
+
     let _ = out.flush();
+    let _ = err.flush();
 }
