@@ -252,6 +252,18 @@ mod tests {
         assert_eq!(stderr_redirect, None);
         assert_eq!(append_redirect, Some("/tmp/dog/bee.md"));
     }
+
+    #[test]
+    fn echo_with_stderr_redirect_keeps_stdout_visible() {
+        let output = std::process::Command::new("bash")
+            .arg("-lc")
+            .arg("cd /run/media/mark/New\ Volume/Documents/codecrafters-shell-rust && mkdir -p /tmp/ant && printf 'echo Alice file cannot be found 2> /tmp/ant/dog.md\ncat /tmp/ant/dog.md\nexit\n' | ./target/debug/codecrafters-shell 2>&1")
+            .output()
+            .expect("shell launch failed");
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("Alice file cannot be found"), "stdout was: {stdout}");
+    }
 }
 
 pub fn ls(args: &mut [&str]) {
