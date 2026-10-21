@@ -4,7 +4,7 @@ use std::path::Path;
 use std::fs;
 
 use crate::exec::{find_in_path, write_files, append_to_file};
-use crate::helpers::{read_file, remove_trailing_new_line, unquote, split_redirection_args};
+use crate::helpers::{remove_trailing_new_line, unquote};
 
 pub fn builtins (args: &[&str]) {
     let target = args.first().copied().unwrap_or("");
@@ -56,27 +56,17 @@ pub fn echo(input: &str) {
     }
 
     if let Some(i) = stderr_idx {
-        if i + 1 < args.len() {
-            let fname = &args[i + 1];
-            if let Err(e) = write_files("", fname) {
-                eprintln!("echo: {}: {}", fname, e);
-            }
-        } else {
+        if i + 1 >= args.len() {
             eprintln!("echo: syntax error: expected filename after '2>'");
         }
-        return;
+        // echo writes to stdout; redirecting stderr should not suppress the command output.
     }
 
     if let Some(i) = stderr_append_idx {
-        if i + 1 < args.len() {
-            let fname = &args[i + 1];
-            if let Err(e) = append_to_file("", fname) {
-                eprintln!("echo: {}: {}", fname, e);
-            }
-        } else {
+        if i + 1 >= args.len() {
             eprintln!("echo: syntax error: expected filename after '2>>'");
         }
-        return;
+        // echo writes to stdout; redirecting stderr should not suppress the command output.
     }
 
     if content.is_empty() {
