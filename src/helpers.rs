@@ -48,6 +48,21 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn tokenize_handles_append_redirect() {
+        let tokens = tokenize("ls -1 /tmp/ant >> /tmp/dog/bee.md\n");
+        assert_eq!(
+            tokens,
+            vec![
+                "ls".to_string(),
+                "-1".to_string(),
+                "/tmp/ant".to_string(),
+                ">>".to_string(),
+                "/tmp/dog/bee.md".to_string(),
+            ]
+        );
+    }
 }
 
 
