@@ -210,6 +210,7 @@ fn clean_io(e: &io::Error) -> String {
 
 #[cfg(test)]
 mod tests {
+    use crate::helpers::split_redirection_args;
 
     #[test]
     fn cat_redirect_keeps_first_file_and_command_in_args() {
