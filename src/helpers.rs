@@ -190,15 +190,29 @@ pub fn tokenize(input: &str) -> Vec<String> {
                     if matches!(chars.peek(), Some('>') | Some('<')) {
                         flush(&mut tokens, &mut cur, &mut started);
                         let op = chars.next().unwrap();
-                        tokens.push(format!("{}{}", d, op));
+                        if matches!(chars.peek(), Some('>')) && op == '>' {
+                            chars.next();
+                            tokens.push(format!("{}>>", d));
+                        } else {
+                            tokens.push(format!("{}{}", d, op));
+                        }
                     } else {
                         cur.push(d);
                         started = true;
                     }
                 }
-                '>' | '<' => {
+                '>' => {
                     flush(&mut tokens, &mut cur, &mut started);
-                    tokens.push(c.to_string());
+                    if matches!(chars.peek(), Some('>')) {
+                        chars.next();
+                        tokens.push(">>".to_string());
+                    } else {
+                        tokens.push(">".to_string());
+                    }
+                }
+                '<' => {
+                    flush(&mut tokens, &mut cur, &mut started);
+                    tokens.push("<".to_string());
                 }
                 ' ' | '\t' => {
                     if started {
@@ -232,6 +246,12 @@ pub fn split_redirection_args(tokens: &[String]) -> (Vec<&str>, Option<&str>, Op
             "2>" => {
                 if i + 1 < tokens.len() {
                     stderr_redirect = Some(tokens[i + 1].as_str());
+                }
+                i += 2;
+            }
+            "2>>" => {
+                if i + 1 < tokens.len() {
+                    append_redirect = Some(tokens[i + 1].as_str());
                 }
                 i += 2;
             }

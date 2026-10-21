@@ -51,8 +51,26 @@ fn main() {
                     &mut append_buffer
                 );
 
-                // Handle stdout redirection.
-                if let Some(filename) = stdout_redirect {
+                if let Some(filename) = append_redirect {
+                    if let Some(parent) = std::path::Path::new(filename).parent() {
+                        if !parent.as_os_str().is_empty() {
+                            let _ = std::fs::create_dir_all(parent);
+                        }
+                    }
+
+                    match std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open(filename)
+                    {
+                        Ok(mut file) => {
+                            if let Err(e) = file.write_all(&stdout_buffer) {
+                                eprintln!("cat: {}: {}", filename, e);
+                            }
+                        }
+                        Err(e) => eprintln!("cat: {}: {}", filename, e),
+                    }
+                } else if let Some(filename) = stdout_redirect {
                     if let Err(e) = fs::write(filename, &stdout_buffer) {
                         eprintln!("cat: {}: {}", filename, e);
                     }

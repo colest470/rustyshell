@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::Path;
 use std::fs;
@@ -24,11 +24,24 @@ pub fn echo(input: &str) {
 
     let stdout_idx = args.iter().position(|a| a == ">" || a == "1>");
     let stderr_idx = args.iter().position(|a| a == "2>");
-    let append_idx = args.iter().position(|a | a == ">>" || a == "1>>");
+    let append_idx = args.iter().position(|a| a == ">>" || a == "1>>");
+    let stderr_append_idx = args.iter().position(|a| a == "2>>");
 
-    let first_redirect = [stdout_idx, stderr_idx, append_idx].into_iter().flatten().min();
+    let first_redirect = [stdout_idx, stderr_idx, append_idx, stderr_append_idx].into_iter().flatten().min();
     let content_end = first_redirect.unwrap_or(args.len());
     let content = args[..content_end].join(" ");
+
+    if let Some(i) = append_idx {
+        if i + 1 < args.len() {
+            let fname = &args[i + 1];
+            if let Err(e) = append_to_file(&format!("{}\n", content), fname) {
+                eprintln!("echo: {}: {}", fname, e);
+            }
+        } else {
+            eprintln!("echo: syntax error: expected filename after '>>'");
+        }
+        return;
+    }
 
     if let Some(i) = stdout_idx {
         if i + 1 < args.len() {
@@ -36,8 +49,6 @@ pub fn echo(input: &str) {
             if let Err(e) = write_files(&format!("{}\n", content), fname) {
                 eprintln!("echo: {}: {}", fname, e);
             }
-        } else if let Some(i) = stderr_idx {
-            eprintln!("echo: syntax error: expected filename after '>'");
         } else {
             eprintln!("echo: syntax error: expected filename after '>'");
         }
@@ -50,18 +61,22 @@ pub fn echo(input: &str) {
             if let Err(e) = write_files("", fname) {
                 eprintln!("echo: {}: {}", fname, e);
             }
-        } else if let Some(i) = append_idx {
-            if i + 1 < args.len() {
-                let fname = &args[i + 1];
-                if let Err(e) = append_to_file(&format!("{}\n", content), fname) {
-                    eprintln!("echo: {}: {}", fname, e);
-                }
-            } else {
-                eprintln!("echo: syntax error: expected filename after '>>'");
-            }
         } else {
             eprintln!("echo: syntax error: expected filename after '2>'");
         }
+        return;
+    }
+
+    if let Some(i) = stderr_append_idx {
+        if i + 1 < args.len() {
+            let fname = &args[i + 1];
+            if let Err(e) = append_to_file("", fname) {
+                eprintln!("echo: {}: {}", fname, e);
+            }
+        } else {
+            eprintln!("echo: syntax error: expected filename after '2>>'");
+        }
+        return;
     }
 
     if content.is_empty() {
@@ -254,15 +269,28 @@ pub fn ls(args: &mut [&str]) {
 
     let mut redirect_idx = None;
     let mut is_stderr = false;
+    let mut is_append = false;
 
     for (i, element) in args.iter().enumerate() {
         if *element == ">" || *element == "1>" {
             redirect_idx = Some(i);
             is_stderr = false;
+            is_append = false;
             break;
         } else if *element == "2>" {
             redirect_idx = Some(i);
             is_stderr = true;
+            is_append = false;
+            break;
+        } else if *element == ">>" || *element == "1>>" {
+            redirect_idx = Some(i);
+            is_stderr = false;
+            is_append = true;
+            break;
+        } else if *element == "2>>" {
+            redirect_idx = Some(i);
+            is_stderr = true;
+            is_append = true;
             break;
         }
     }
@@ -278,25 +306,35 @@ pub fn ls(args: &mut [&str]) {
                 }
             }
 
-        match File::create(file_name) {
-            Ok(mut file) => {
-                let stdout = io::stdout();
-                let mut out_lock = stdout.lock();
-                let stderr = io::stderr();
-                let mut err_lock = stderr.lock();
+            let open_result = if is_append {
+                OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .append(true)
+                    .open(file_name)
+            } else {
+                File::create(file_name)
+            };
 
-                if is_stderr {
-                    execute_ls(ls_args, &mut out_lock, &mut file);
-                } else {
-                    execute_ls(ls_args, &mut file, &mut err_lock);
+            match open_result {
+                Ok(mut file) => {
+                    let stdout = io::stdout();
+                    let mut out_lock = stdout.lock();
+                    let stderr = io::stderr();
+                    let mut err_lock = stderr.lock();
+
+                    if is_stderr {
+                        execute_ls(ls_args, &mut out_lock, &mut file);
+                    } else {
+                        execute_ls(ls_args, &mut file, &mut err_lock);
+                    }
+                }
+                Err(e) => {
+                    let err_msg = e.to_string();
+                    let clean_msg = err_msg.split(" (os error").next().unwrap_or(&err_msg);
+                    eprintln!("ls: {}: {}", file_name, clean_msg);
                 }
             }
-            Err(e) => {
-                let err_msg = e.to_string();
-                let clean_msg = err_msg.split(" (os error").next().unwrap_or(&err_msg);
-                eprintln!("ls: {}: {}", file_name, clean_msg);
-            }
-        }
             return;
         }
     }
