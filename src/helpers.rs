@@ -198,3 +198,40 @@ pub fn tokenize(input: &str) -> Vec<String> {
     flush(&mut tokens, &mut cur, &mut started);
     tokens
 }
+
+pub fn split_redirection_args(tokens: &[String]) -> (Vec<&str>, Option<&str>, Option<&str>, Option<&str>) {
+    let mut args = Vec::new();
+    let mut stdout_redirect = None;
+    let mut stderr_redirect = None;
+    let mut append_redirect = None;
+    let mut i = 0;
+
+    while i < tokens.len() {
+        match tokens[i].as_str() {
+            ">" | "1>" => {
+                if i + 1 < tokens.len() {
+                    stdout_redirect = Some(tokens[i + 1].as_str());
+                }
+                i += 2;
+            }
+            "2>" => {
+                if i + 1 < tokens.len() {
+                    stderr_redirect = Some(tokens[i + 1].as_str());
+                }
+                i += 2;
+            }
+            ">>" | "1>>" => {
+                if i + 1 < tokens.len() {
+                    append_redirect = Some(tokens[i + 1].as_str());
+                }
+                i += 2;
+            }
+            token => {
+                args.push(token);
+                i += 1;
+            }
+        }
+    }
+
+    (args, stdout_redirect, stderr_redirect, append_redirect)
+}

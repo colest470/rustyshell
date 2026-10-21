@@ -39,14 +39,16 @@ fn main() {
 
                 let mut stdout_buffer: Vec<u8> = Vec::new();
                 let mut stderr_buffer: Vec<u8> = Vec::new();
+                let mut append_buffer: Vec<u8> = Vec::new();
 
-                let (mut args_cat, stdout_redirect, stderr_redirect) =
-                    builtin::split_redirection_args(&tokenized_strings);
+                let (mut args_cat, stdout_redirect, stderr_redirect, append_redirect) =
+                    helpers::split_redirection_args(&tokenized_strings);
 
                 builtin::cat(
                     &mut args_cat,
                     &mut stdout_buffer,
                     &mut stderr_buffer,
+                    &mut append_buffer
                 );
 
                 // Handle stdout redirection.

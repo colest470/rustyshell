@@ -38,17 +38,17 @@ pub fn write_files(content: &str, file_name: &str) -> io::Result<()> {
 
         file.write_all(content.as_bytes())?;
 
-    // if origin_file_name == "" {
-    //     let mut file = OpenOptions::new()
-    //         .write(true)
-    //         .create(true)
-    //         .truncate(true)
-    //         .open(file_name)?;
+    Ok(())
+}
 
-    //     file.write_all(content.as_bytes())?;
-    // } else {
+pub fn append_to_file(content: &str, file_name: &str) -> io::Result<()> {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .append(true)
+        .open(file_name)?;
 
-    // }
+    file.write_all(content.as_bytes())?;
 
     Ok(())
 }

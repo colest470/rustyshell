@@ -3,8 +3,8 @@ use std::io::{self, Read, Write};
 use std::path::Path;
 use std::fs;
 
-use crate::exec::{find_in_path, write_files};
-use crate::helpers::{read_file, remove_trailing_new_line, unquote};
+use crate::exec::{find_in_path, write_files, append_to_file};
+use crate::helpers::{read_file, remove_trailing_new_line, unquote, split_redirection_args};
 
 pub fn builtins (args: &[&str]) {
     let target = args.first().copied().unwrap_or("");
@@ -18,57 +18,26 @@ pub fn builtins (args: &[&str]) {
     }
 }
 
-pub fn split_redirection_args(tokens: &[String]) -> (Vec<&str>, Option<&str>, Option<&str>) {
-    let mut args = Vec::new();
-    let mut stdout_redirect = None;
-    let mut stderr_redirect = None;
-    let mut i = 0;
-
-    while i < tokens.len() {
-        match tokens[i].as_str() {
-            ">" | "1>" => {
-                if i + 1 < tokens.len() {
-                    stdout_redirect = Some(tokens[i + 1].as_str());
-                }
-                i += 2;
-            }
-            "2>" => {
-                if i + 1 < tokens.len() {
-                    stderr_redirect = Some(tokens[i + 1].as_str());
-                }
-                i += 2;
-            }
-            token => {
-                args.push(token);
-                i += 1;
-            }
-        }
-    }
-
-    (args, stdout_redirect, stderr_redirect)
-}
-
 pub fn echo(input: &str) {
     let remainder = input.strip_prefix("echo").unwrap_or(input).trim_start();
     let args = split_echo_args(remainder);
 
-    // Find stdout redirect
     let stdout_idx = args.iter().position(|a| a == ">" || a == "1>");
-    // Find stderr redirect
     let stderr_idx = args.iter().position(|a| a == "2>");
+    let append_idx = args.iter().position(|a | a == ">>" || a == "1>>");
 
-    // Content = everything up to the first redirect operator
-    let first_redirect = [stdout_idx, stderr_idx].into_iter().flatten().min();
+    let first_redirect = [stdout_idx, stderr_idx, append_idx].into_iter().flatten().min();
     let content_end = first_redirect.unwrap_or(args.len());
     let content = args[..content_end].join(" ");
 
-    // Handle stdout redirect: write to file and return
     if let Some(i) = stdout_idx {
         if i + 1 < args.len() {
             let fname = &args[i + 1];
             if let Err(e) = write_files(&format!("{}\n", content), fname) {
                 eprintln!("echo: {}: {}", fname, e);
             }
+        } else if let Some(i) = stderr_idx {
+            eprintln!("echo: syntax error: expected filename after '>'");
         } else {
             eprintln!("echo: syntax error: expected filename after '>'");
         }
@@ -80,6 +49,15 @@ pub fn echo(input: &str) {
             let fname = &args[i + 1];
             if let Err(e) = write_files("", fname) {
                 eprintln!("echo: {}: {}", fname, e);
+            }
+        } else if let Some(i) = append_idx {
+            if i + 1 < args.len() {
+                let fname = &args[i + 1];
+                if let Err(e) = append_to_file(&format!("{}\n", content), fname) {
+                    eprintln!("echo: {}: {}", fname, e);
+                }
+            } else {
+                eprintln!("echo: syntax error: expected filename after '>>'");
             }
         } else {
             eprintln!("echo: syntax error: expected filename after '2>'");
@@ -138,7 +116,7 @@ fn split_echo_args(input: &str) -> Vec<String> {
 }
 
 
-pub fn cat(args: &mut [&str], out: &mut impl Write, err: &mut impl Write) {
+pub fn cat(args: &mut [&str], out: &mut impl Write, err: &mut impl Write, append: &mut impl Write) {
     remove_trailing_new_line(args);
 
     let rest = if args.first().is_some_and(|arg| *arg == "cat") {
@@ -177,7 +155,7 @@ pub fn cat(args: &mut [&str], out: &mut impl Write, err: &mut impl Write) {
 
     while i < rest.len() {
         match rest[i] {
-            ">" | "1>" | "2>" => {
+            ">" | "1>" | "2>" | ">>" | "1>>" => {
                 break;
             }
             path => {
@@ -232,7 +210,6 @@ fn clean_io(e: &io::Error) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::split_redirection_args;
 
     #[test]
     fn cat_redirect_keeps_first_file_and_command_in_args() {
@@ -244,11 +221,12 @@ mod tests {
             "/tmp/ant/owl.md".to_string(),
         ];
 
-        let (args, stdout_redirect, stderr_redirect) = split_redirection_args(&tokens);
+        let (args, stdout_redirect, stderr_redirect, append_redirect) = split_redirection_args(&tokens);
 
         assert_eq!(args, vec!["cat", "/tmp/bee/orange", "nonexistent"]);
         assert_eq!(stdout_redirect, Some("/tmp/ant/owl.md"));
         assert_eq!(stderr_redirect, None);
+        // assert_eq!(append_redirect, None);
     }
 }
 
