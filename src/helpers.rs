@@ -1,5 +1,5 @@
 use std::fs;
-use std::io;
+// use std::io;
 use std::io::Write;
 
 use crate::exec::{find_in_path};
@@ -84,10 +84,10 @@ pub fn if_executable(input: &str) -> (bool, String, String, Vec<String>) {
     (false, String::new(), String::new(), Vec::new())
 }
 
-pub fn read_file(path: &str) -> io::Result<String> {
-    let content = fs::read_to_string(path)?;
-    Ok(content)
-}
+// pub fn read_file(path: &str) -> io::Result<String> {
+//     let content = fs::read_to_string(path)?;
+//     Ok(content)
+// }
 
 pub fn tokenize(input: &str) -> Vec<String> {
     let mut tokens = Vec::new();
@@ -207,9 +207,6 @@ pub fn write_redirected(
 ) {
     match target {
         Some((filename, append)) => {
-            // Create parent directories if the redirect target lives in a
-            // subdir that doesn't exist yet (matches what the old `cat` arm
-            // did for `append_redirect`).
             if let Some(parent) = std::path::Path::new(filename).parent() {
                 if !parent.as_os_str().is_empty() {
                     let _ = fs::create_dir_all(parent);
@@ -219,9 +216,9 @@ pub fn write_redirected(
             let mut o = fs::OpenOptions::new();
             o.create(true);
             if append {
-                o.append(true);           // >> and 2>>
+                o.append(true);
             } else {
-                o.write(true).truncate(true); // > and 2>
+                o.write(true).truncate(true);
             }
 
             match o.open(filename) {

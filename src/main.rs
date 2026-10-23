@@ -1,5 +1,4 @@
 use std::io::{self, Write};
-use std::fs;
 
 use crate::helpers::tokenize;
 
@@ -32,7 +31,7 @@ fn main() {
             "exit" => break,
             "type" => builtins::r#type::type_arg(args),
             "echo" => {
-                builtins::echo::echo(input_trimmed); // builtin is a folder and echo is a file inside it
+                builtins::echo::echo(input_trimmed);
             }
             "cat" => {
                 let tokenized_strings = tokenize(&input);
@@ -40,9 +39,6 @@ fn main() {
                 let mut stdout_buffer: Vec<u8> = Vec::new();
                 let mut stderr_buffer: Vec<u8> = Vec::new();
 
-                // New 3-tuple return: no more `append_redirect` — append-ness now
-                // travels with the target so `>>` (stdout) and `2>>` (stderr) can't
-                // collide, and `2>>` correctly lands in `stderr_redirect`.
                 let (mut args_cat, stdout_redirect, stderr_redirect) =
                     helpers::split_redirection_args(&tokenized_strings);
 
