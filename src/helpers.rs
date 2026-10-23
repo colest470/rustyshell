@@ -1,5 +1,6 @@
 use std::fs;
 use std::io;
+use std::io::Write;
 
 use crate::exec::{find_in_path};
 
@@ -177,45 +178,61 @@ pub fn tokenize(input: &str) -> Vec<String> {
     tokens
 }
 
-pub fn split_redirection_args(tokens: &[String]) -> (Vec<&str>, Option<&str>, Option<&str>, Option<&str>) {
+pub fn split_redirection_args(
+    tokens: &[String],
+) -> (Vec<&str>, Option<(&str, bool)>, Option<(&str, bool)>) {
     let mut args = Vec::new();
-    let mut stdout_redirect = None;
-    let mut stderr_redirect = None;
-    let mut append_redirect = None;
+    let mut stdout_redirect: Option<(&str, bool)> = None;
+    let mut stderr_redirect: Option<(&str, bool)> = None;
     let mut i = 0;
 
     while i < tokens.len() {
         match tokens[i].as_str() {
-            ">" | "1>" => {
-                if i + 1 < tokens.len() {
-                    stdout_redirect = Some(tokens[i + 1].as_str());
-                }
-                i += 2;
-            }
-            "2>" => {
-                if i + 1 < tokens.len() {
-                    stderr_redirect = Some(tokens[i + 1].as_str());
-                }
-                i += 2;
-            }
-            "2>>" => {
-                if i + 1 < tokens.len() {
-                    append_redirect = Some(tokens[i + 1].as_str());
-                }
-                i += 2;
-            }
-            ">>" | "1>>" => {
-                if i + 1 < tokens.len() {
-                    append_redirect = Some(tokens[i + 1].as_str());
-                }
-                i += 2;
-            }
-            token => {
-                args.push(token);
-                i += 1;
-            }
+            ">"  | "1>"  => { if i + 1 < tokens.len() { stdout_redirect = Some((tokens[i+1].as_str(), false)); } i += 2; }
+            ">>" | "1>>" => { if i + 1 < tokens.len() { stdout_redirect = Some((tokens[i+1].as_str(), true));  } i += 2; }
+            "2>"         => { if i + 1 < tokens.len() { stderr_redirect = Some((tokens[i+1].as_str(), false)); } i += 2; }
+            "2>>"        => { if i + 1 < tokens.len() { stderr_redirect = Some((tokens[i+1].as_str(), true));  } i += 2; }
+            token        => { args.push(token); i += 1; }
         }
     }
 
-    (args, stdout_redirect, stderr_redirect, append_redirect)
+    (args, stdout_redirect, stderr_redirect)
+}
+
+pub fn write_redirected(
+    cmd_name: &str,
+    target: Option<(&str, bool)>,
+    buf: &[u8],
+    default: impl FnOnce(&[u8]),
+) {
+    match target {
+        Some((filename, append)) => {
+            // Create parent directories if the redirect target lives in a
+            // subdir that doesn't exist yet (matches what the old `cat` arm
+            // did for `append_redirect`).
+            if let Some(parent) = std::path::Path::new(filename).parent() {
+                if !parent.as_os_str().is_empty() {
+                    let _ = fs::create_dir_all(parent);
+                }
+            }
+
+            let mut o = fs::OpenOptions::new();
+            o.create(true);
+            if append {
+                o.append(true);           // >> and 2>>
+            } else {
+                o.write(true).truncate(true); // > and 2>
+            }
+
+            match o.open(filename) {
+                Ok(mut f) => {
+                    if let Err(e) = f.write_all(buf) {
+                        eprintln!("{}: {}: {}", cmd_name, filename, e);
+                    }
+                }
+                Err(e) => eprintln!("{}: {}: {}", cmd_name, filename, e),
+            }
+        }
+        None => default(buf),
+    }
 }

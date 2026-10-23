@@ -7,7 +7,6 @@ mod exec;
 mod helpers;
 
 pub mod builtins;
-pub mod builtin;
 
 fn main() {
     loop {
@@ -35,61 +34,31 @@ fn main() {
             "echo" => {
                 builtins::echo::echo(input_trimmed); // builtin is a folder and echo is a file inside it
             }
-            
             "cat" => {
                 let tokenized_strings = tokenize(&input);
 
                 let mut stdout_buffer: Vec<u8> = Vec::new();
                 let mut stderr_buffer: Vec<u8> = Vec::new();
-                let mut append_buffer: Vec<u8> = Vec::new();
 
-                let (mut args_cat, stdout_redirect, stderr_redirect, append_redirect) =
+                // New 3-tuple return: no more `append_redirect` — append-ness now
+                // travels with the target so `>>` (stdout) and `2>>` (stderr) can't
+                // collide, and `2>>` correctly lands in `stderr_redirect`.
+                let (mut args_cat, stdout_redirect, stderr_redirect) =
                     helpers::split_redirection_args(&tokenized_strings);
 
                 builtins::cat::cat(
                     &mut args_cat,
                     &mut stdout_buffer,
                     &mut stderr_buffer,
-                    &mut append_buffer
                 );
 
-                if let Some(filename) = append_redirect {
-                    if let Some(parent) = std::path::Path::new(filename).parent() {
-                        if !parent.as_os_str().is_empty() {
-                            let _ = std::fs::create_dir_all(parent);
-                        }
-                    }
-
-                    match std::fs::OpenOptions::new()
-                        .create(true)
-                        .append(true)
-                        .open(filename)
-                    {
-                        Ok(mut file) => {
-                            if let Err(e) = file.write_all(&stdout_buffer) {
-                                eprintln!("cat: {}: {}", filename, e);
-                            }
-                        }
-                        Err(e) => eprintln!("cat: {}: {}", filename, e),
-                    }
-                } else if let Some(filename) = stdout_redirect {
-                    if let Err(e) = fs::write(filename, &stdout_buffer) {
-                        eprintln!("cat: {}: {}", filename, e);
-                    }
-                } else {
-                    let _ = io::stdout().write_all(&stdout_buffer);
-                }
-
-                // Handle stderr redirection.
-                if let Some(filename) = stderr_redirect {
-                    if let Err(e) = fs::write(filename, &stderr_buffer) {
-                        eprintln!("cat: {}: {}", filename, e);
-                    }
-                } else {
-                    let _ = io::stderr().write_all(&stderr_buffer);
-                }
+                helpers::write_redirected("cat", stdout_redirect, &stdout_buffer, |b| {
+                    let _ = io::stdout().write_all(b);
+                });
+                helpers::write_redirected("cat", stderr_redirect, &stderr_buffer, |b| {
+                    let _ = io::stderr().write_all(b);
+                });
             }
-
             "ls" => {
                 let mut args_ls: Vec<&str> = tokens.iter().skip(1).map(|s| s.as_str()).collect();
                 builtins::ls::ls(&mut args_ls);
