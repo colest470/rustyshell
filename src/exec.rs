@@ -5,7 +5,7 @@ use std::fs::OpenOptions;
 use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process::Command;
-use std::io::{self, Write};
+use std::io::{Write};
 
 pub fn find_in_path(command: &str) -> Option<PathBuf> {
     let path = env::var_os("PATH");
