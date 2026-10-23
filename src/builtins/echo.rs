@@ -41,7 +41,6 @@ pub fn echo(input: &str) {
         if i + 1 >= args.len() {
             eprintln!("echo: syntax error: expected filename after '2>'");
         }
-        // echo writes to stdout; redirecting stderr should not suppress the command output.
     }
 
     if let Some(i) = stderr_append_idx {
