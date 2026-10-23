@@ -16,8 +16,6 @@ pub fn echo(input: &str) {
     let content_end = first_redirect.unwrap_or(args.len());
     let content = args[..content_end].join(" ");
 
-    // stderr redirects: echo never writes to stderr, but the shell still
-    // creates/truncates (2>) or creates (2>>) the target file.
     if let Some(i) = stderr_idx {
         match args.get(i + 1) {
             Some(fname) => {
