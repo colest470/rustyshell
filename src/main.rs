@@ -3,9 +3,11 @@ use std::fs;
 
 use crate::helpers::tokenize;
 
-mod builtin;
 mod exec;
 mod helpers;
+
+pub mod builtins;
+pub mod builtin;
 
 fn main() {
     loop {
@@ -29,9 +31,9 @@ fn main() {
 
         match command {
             "exit" => break,
-            "type" => builtin::builtins(args),
+            "type" => builtins::r#type::type_arg(args),
             "echo" => {
-                builtin::echo(input_trimmed);
+                builtins::echo::echo(input_trimmed); // builtin is a folder and echo is a file inside it
             }
             
             "cat" => {
@@ -44,7 +46,7 @@ fn main() {
                 let (mut args_cat, stdout_redirect, stderr_redirect, append_redirect) =
                     helpers::split_redirection_args(&tokenized_strings);
 
-                builtin::cat(
+                builtins::cat::cat(
                     &mut args_cat,
                     &mut stdout_buffer,
                     &mut stderr_buffer,
@@ -90,7 +92,7 @@ fn main() {
 
             "ls" => {
                 let mut args_ls: Vec<&str> = tokens.iter().skip(1).map(|s| s.as_str()).collect();
-                builtin::ls(&mut args_ls);
+                builtins::ls::ls(&mut args_ls);
             }
             _ => {
                 let (is_executable_file, exec_command, path_to_file, exec_args) = 
