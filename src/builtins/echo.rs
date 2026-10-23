@@ -1,7 +1,5 @@
 use crate::exec::{append_to_file, write_files};
 
-use crate::exec::{append_to_file, write_files};
-
 pub fn echo(input: &str) {
     let remainder = input.strip_prefix("echo").unwrap_or(input).trim_start();
     let args = split_echo_args(remainder);
