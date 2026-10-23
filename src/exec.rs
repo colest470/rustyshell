@@ -29,26 +29,12 @@ pub fn execute_file(command: &str, file_path: &str, args: &[&str]) {
         .expect("Error executing that file");
 }
 
-pub fn write_files(content: &str, file_name: &str) -> io::Result<()> {
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(file_name)?;
-
-        file.write_all(content.as_bytes())?;
-
-    Ok(())
+pub fn write_files(content: &str, path: &str) -> std::io::Result<()> {
+    let mut f = OpenOptions::new().write(true).create(true).truncate(true).open(path)?;
+    f.write_all(content.as_bytes())
 }
 
-pub fn append_to_file(content: &str, file_name: &str) -> io::Result<()> {
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .append(true)
-        .open(file_name)?;
-
-    file.write_all(content.as_bytes())?;
-
-    Ok(())
+pub fn append_to_file(content: &str, path: &str) -> std::io::Result<()> {
+    let mut f = OpenOptions::new().append(true).create(true).open(path)?;
+    f.write_all(content.as_bytes())
 }
