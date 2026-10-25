@@ -15,8 +15,6 @@ impl Drop for RawModeGuard {
 }
 
 fn main() -> io::Result<()> {
-    let _guard = RawModeGuard::new()?;
-
     loop {
         print!("$ ");
         io::stdout().flush()?;

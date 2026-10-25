@@ -2,12 +2,12 @@ use std::io::{self, Write};
 use std::fs::{self, File, OpenOptions};
 use std::path::Path;
 
-use crate::helpers::{remove_trailing_new_line, unquote};
+use crate::helpers::{remove_trailing_new_line};
 
 pub fn ls(args: &mut [&str]) {
     eprintln!("DEBUG args = {:?}", args);
 
-    remove_trailing_new_line(args);
+    // remove_trailing_new_line(args);
 
     let mut redirect_idx = None;
     let mut is_stderr = false;
