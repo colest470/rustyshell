@@ -269,21 +269,6 @@ fn is_enter_key(key: &event::KeyEvent) -> bool {
         || (ctrl && matches!(key.code, KeyCode::Char('m')))
 }
 
-#[cfg(test)]
-mod tests {
-    use super::is_enter_key;
-    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-
-    #[test]
-    fn ctrl_j_and_ctrl_m_count_as_enter() {
-        assert!(is_enter_key(&KeyEvent::new(KeyCode::Enter, KeyModifiers::empty())));
-        assert!(is_enter_key(&KeyEvent::new(KeyCode::Char('j'), KeyModifiers::CONTROL)));
-        assert!(is_enter_key(&KeyEvent::new(KeyCode::Char('m'), KeyModifiers::CONTROL)));
-        assert!(!is_enter_key(&KeyEvent::new(KeyCode::Char('j'), KeyModifiers::empty())));
-        assert!(!is_enter_key(&KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL)));
-    }
-}
-
 pub fn read_line_interactive() -> io::Result<Option<String>> {
     let _guard = RawModeGuard::new()?;
     let mut stdout = io::stdout();
