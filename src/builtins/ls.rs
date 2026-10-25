@@ -87,44 +87,29 @@ pub fn ls(args: &mut [&str]) {
 }
 
 fn execute_ls(args: &[&str], out: &mut impl Write, err: &mut impl Write) {
-    let full_args_str = args.join(" ");
-    let unquoted_args = unquote(&full_args_str);
-
-    let mut target_paths: Vec<String> = Vec::new();
-
-    for arg in unquoted_args {
-        let trimmed = arg.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-        if trimmed.starts_with('-') {
-            continue;
-        }
-        target_paths.push(trimmed.to_string());
-    }
+    let mut target_paths: Vec<&str> = args
+        .iter()
+        .copied()
+        .filter(|a| !a.is_empty() && !a.starts_with('-'))
+        .collect();
 
     if target_paths.is_empty() {
-        target_paths.push(".".to_string());
+        target_paths.push(".");
     }
 
-    for filename in &target_paths {
+    for filename in target_paths {
         match fs::read_dir(filename) {
             Ok(entries) => {
                 let mut names: Vec<String> = Vec::new();
                 for entry in entries {
                     match entry {
-                        Ok(entry) => {
-                            names.push(entry.file_name().to_string_lossy().into_owned());
-                        }
+                        Ok(e) => names.push(e.file_name().to_string_lossy().into_owned()),
                         Err(e) => {
-                            let err_msg = e.to_string();
-                            let clean_msg = err_msg.split(" (os error").next().unwrap_or(&err_msg);
-                            let _ = writeln!(err, "ls: {}: {}", filename, clean_msg);
+                            let _ = writeln!(err, "ls: {}: {}", filename, clean(&e));
                         }
                     }
                 }
                 names.sort();
-
                 for name in names {
                     if let Err(e) = writeln!(out, "{}", name) {
                         if e.kind() == io::ErrorKind::BrokenPipe {
@@ -134,13 +119,16 @@ fn execute_ls(args: &[&str], out: &mut impl Write, err: &mut impl Write) {
                 }
             }
             Err(e) => {
-                let err_msg = e.to_string();
-                let clean_msg = err_msg.split(" (os error").next().unwrap_or(&err_msg);
-                let _ = writeln!(err, "ls: {}: {}", filename, clean_msg);
+                let _ = writeln!(err, "ls: {}: {}", filename, clean(&e));
             }
         }
     }
 
     let _ = out.flush();
     let _ = err.flush();
+}
+
+fn clean(e: &io::Error) -> String {
+    let s = e.to_string();
+    s.split(" (os error").next().unwrap_or(&s).to_string()
 }
