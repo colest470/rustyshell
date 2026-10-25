@@ -1,23 +1,33 @@
 use std::io::{self, Write};
-
-use crate::helpers::tokenize;
+use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
+use crossterm::terminal;
 
 mod exec;
 mod helpers;
-
 pub mod builtins;
 
-fn main() {
+struct RawModeGuard;
+impl RawModeGuard {
+    fn new() -> io::Result<Self> { terminal::enable_raw_mode()?; Ok(Self) }
+}
+impl Drop for RawModeGuard {
+    fn drop(&mut self) { let _ = terminal::disable_raw_mode(); }
+}
+
+fn main() -> io::Result<()> {
+    let _guard = RawModeGuard::new()?;
+
     loop {
         print!("$ ");
-        io::stdout().flush().unwrap();
+        io::stdout().flush()?;
 
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).expect("No command entered");
+        let input = match helpers::read_line_interactive()? {
+            Some(line) => line,
+            None => break Ok(()),
+        };
 
         let input_trimmed = input.trim();
         if input_trimmed.is_empty() {
-            print!("Invalid command");
             continue;
         }
 
@@ -28,13 +38,13 @@ fn main() {
         let tokens = helpers::tokenize(&input);
 
         match command {
-            "exit" => break,
+            "exit" => break Ok(()),
             "type" => builtins::r#type::type_arg(args),
             "echo" => {
                 builtins::echo::echo(input_trimmed);
             }
             "cat" => {
-                let tokenized_strings = tokenize(&input);
+                let tokenized_strings = helpers::tokenize(&input);
 
                 let mut stdout_buffer: Vec<u8> = Vec::new();
                 let mut stderr_buffer: Vec<u8> = Vec::new();

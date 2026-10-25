@@ -1,8 +1,9 @@
-use std::fs;
+use std::{fs, io};
 // use std::io;
 use std::io::Write;
+use crossterm::{event::{ self, Event, KeyCode, KeyEventKind, KeyModifiers }, terminal};
 
-use crate::exec::{find_in_path};
+use crate::exec::find_in_path;
 
 pub fn remove_trailing_new_line<'a, 'b>(args: &'a mut [&'b str]) -> &'a mut [&'b str] {
     if let Some(last) = args.last_mut() {
@@ -231,5 +232,87 @@ pub fn write_redirected(
             }
         }
         None => default(buf),
+    }
+}
+struct RawModeGuard;
+
+impl RawModeGuard {
+    fn new() -> io::Result<Self> {
+        terminal::enable_raw_mode()?;
+        Ok(Self)
+    }
+}
+
+impl Drop for RawModeGuard {
+    fn drop(&mut self) {
+        let _ = terminal::disable_raw_mode();
+    }
+}
+
+const BUILTINS: &[&str] = &["echo", "exit", "type", "cat", "ls"];
+
+fn complete(prefix: &str) -> Option<String> {
+    if prefix.is_empty() || prefix.contains(char::is_whitespace) {
+        return None;
+    }
+    let mut matches = BUILTINS.iter().filter(|c| c.starts_with(prefix));
+    match (matches.next(), matches.next()) {
+        (Some(only), None) => Some(format!("{only} ")),
+        _ => None,
+    }
+}
+
+pub fn read_line_interactive() -> io::Result<Option<String>> {
+    let _guard = RawModeGuard::new()?;
+    let mut stdout = io::stdout();
+    let mut buf = String::new();
+
+    loop {
+        let Event::Key(key) = event::read()? else {
+            continue;
+        };
+
+        if key.kind != KeyEventKind::Press {
+            continue;
+        }
+        let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+
+        match key.code {
+            KeyCode::Enter => {
+                write!(stdout, "\r\n")?;
+                stdout.flush()?;
+                return Ok(Some(buf));
+            }
+            KeyCode::Char('c') if ctrl => {
+                write!(stdout, "^C\r\n")?;
+                stdout.flush()?;
+                return Ok(Some(String::new()));
+            }
+            KeyCode::Char('d') if ctrl => {
+                if buf.is_empty() {
+                    write!(stdout, "\r\n")?;
+                    stdout.flush()?;
+                    return Ok(None);
+                }
+            }
+            KeyCode::Tab => match complete(&buf) {
+                Some(full) => {
+                    write!(stdout, "{}", &full[buf.len()..])?;
+                    buf = full;
+                }
+                None => write!(stdout, "\x07")?,
+            },
+            KeyCode::Backspace => {
+                if buf.pop().is_some() {
+                    write!(stdout, "\x08 \x08")?;
+                }
+            }
+            KeyCode::Char(c) if !ctrl => {
+                buf.push(c);
+                write!(stdout, "{c}")?;
+            }
+            _ => {}
+        }
+        stdout.flush()?;
     }
 }
