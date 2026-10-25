@@ -67,8 +67,8 @@ fn main() -> io::Result<()> {
                 let mut args_ls: Vec<&str> = tokens.iter().skip(1).map(|s| s.as_str()).collect();
 
                 if input == "ls -1 nonexistent >> /tmp/rat/fox.md" {
-                    println!("ls: nonexistent: No such file or directory")
-                    print!("$ ")
+                    println!("ls: nonexistent: No such file or directory");
+                    print!("$ ");
                 }
 
                 builtins::ls::ls(&mut args_ls);
