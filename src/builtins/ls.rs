@@ -5,8 +5,6 @@ use std::path::Path;
 use crate::helpers::{remove_trailing_new_line};
 
 pub fn ls(args: &mut [&str]) {
-    eprintln!("DEBUG args = {:?}", args);
-
     // remove_trailing_new_line(args);
 
     let mut redirect_idx = None;
@@ -133,4 +131,31 @@ fn execute_ls(args: &[&str], out: &mut impl Write, err: &mut impl Write) {
 fn clean(e: &io::Error) -> String {
     let s = e.to_string();
     s.split(" (os error").next().unwrap_or(&s).to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::execute_ls;
+
+    #[test]
+    fn missing_path_reports_expected_error_without_debug_output() {
+        let mut stdout = Vec::new();
+        let mut stderr = Vec::new();
+
+        execute_ls(&["-1", "nonexistent"], &mut stdout, &mut stderr);
+
+        let stdout = String::from_utf8(stdout).unwrap();
+        let stderr = String::from_utf8(stderr).unwrap();
+
+        assert!(stdout.is_empty(), "stdout should stay empty for a missing path");
+        assert!(
+            stderr.contains("ls: nonexistent: No such file or directory"),
+            "stderr should report the missing path: {}",
+            stderr
+        );
+        assert!(
+            !stderr.contains("DEBUG args"),
+            "debug logging must not leak into user-visible output"
+        );
+    }
 }

@@ -1,18 +1,18 @@
 use std::io::{self, Write};
-use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
-use crossterm::terminal;
+// use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
+// use crossterm::terminal;
 
 mod exec;
 mod helpers;
 pub mod builtins;
 
-struct RawModeGuard;
-impl RawModeGuard {
-    fn new() -> io::Result<Self> { terminal::enable_raw_mode()?; Ok(Self) }
-}
-impl Drop for RawModeGuard {
-    fn drop(&mut self) { let _ = terminal::disable_raw_mode(); }
-}
+// struct RawModeGuard;
+// impl RawModeGuard {
+//     fn new() -> io::Result<Self> { terminal::enable_raw_mode()?; Ok(Self) }
+// }
+// impl Drop for RawModeGuard {
+//     fn drop(&mut self) { let _ = terminal::disable_raw_mode(); }
+// }
 
 fn main() -> io::Result<()> {
     loop {
