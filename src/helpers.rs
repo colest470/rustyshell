@@ -262,6 +262,28 @@ fn complete(prefix: &str) -> Option<String> {
     }
 }
 
+fn is_enter_key(key: &event::KeyEvent) -> bool {
+    let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+    matches!(key.code, KeyCode::Enter)
+        || (ctrl && matches!(key.code, KeyCode::Char('j')))
+        || (ctrl && matches!(key.code, KeyCode::Char('m')))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_enter_key;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+    #[test]
+    fn ctrl_j_and_ctrl_m_count_as_enter() {
+        assert!(is_enter_key(&KeyEvent::new(KeyCode::Enter, KeyModifiers::empty())));
+        assert!(is_enter_key(&KeyEvent::new(KeyCode::Char('j'), KeyModifiers::CONTROL)));
+        assert!(is_enter_key(&KeyEvent::new(KeyCode::Char('m'), KeyModifiers::CONTROL)));
+        assert!(!is_enter_key(&KeyEvent::new(KeyCode::Char('j'), KeyModifiers::empty())));
+        assert!(!is_enter_key(&KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL)));
+    }
+}
+
 pub fn read_line_interactive() -> io::Result<Option<String>> {
     let _guard = RawModeGuard::new()?;
     let mut stdout = io::stdout();
@@ -276,13 +298,15 @@ pub fn read_line_interactive() -> io::Result<Option<String>> {
             continue;
         }
         let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
+        let is_enter = is_enter_key(&key);
+
+        if is_enter {
+            write!(stdout, "\r\n")?;
+            stdout.flush()?;
+            return Ok(Some(buf));
+        }
 
         match key.code {
-            KeyCode::Enter => {
-                write!(stdout, "\r\n")?;
-                stdout.flush()?;
-                return Ok(Some(buf));
-            }
             KeyCode::Char('c') if ctrl => {
                 write!(stdout, "^C\r\n")?;
                 stdout.flush()?;
