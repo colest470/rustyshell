@@ -262,41 +262,41 @@ fn complete(prefix: &str) -> Option<String> {
     }
 }
 
-fn complete_path(prefix: &str) -> Option<String> {
-    if prefix.is_empty() {
-        return None;
-    }
-    let path = std::path::Path::new(prefix);
-    let (dir, base) = match path.parent() {
-        Some(p) if !p.as_os_str().is_empty() => (p.to_path_buf(), path.file_name().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default()),
-        _ => (std::path::PathBuf::from("."), prefix.to_string()),
-    };
+// fn complete_path(prefix: &str) -> Option<String> {
+//     if prefix.is_empty() {
+//         return None;
+//     }
+//     let path = std::path::Path::new(prefix);
+//     let (dir, base) = match path.parent() {
+//         Some(p) if !p.as_os_str().is_empty() => (p.to_path_buf(), path.file_name().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default()),
+//         _ => (std::path::PathBuf::from("."), prefix.to_string()),
+//     };
 
-    let mut matches = fs::read_dir(&dir)
-        .ok()?
-        .filter_map(Result::ok)
-        .filter(|e| e.file_name().to_string_lossy().starts_with(&base));
+//     let mut matches = fs::read_dir(&dir)
+//         .ok()?
+//         .filter_map(Result::ok)
+//         .filter(|e| e.file_name().to_string_lossy().starts_with(&base));
 
-    let first = matches.next()?;
-    if matches.next().is_some() {
-        return None;
-    }
+//     let first = matches.next()?;
+//     if matches.next().is_some() {
+//         return None;
+//     }
 
-    let name = first.file_name();
-    let mut out = if prefix.contains('/') {
-        format!("{}/{}", dir.to_string_lossy(), name.to_string_lossy())
-    } else {
-        name.to_string_lossy().into_owned()
-    };
+//     let name = first.file_name();
+//     let mut out = if prefix.contains('/') {
+//         format!("{}/{}", dir.to_string_lossy(), name.to_string_lossy())
+//     } else {
+//         name.to_string_lossy().into_owned()
+//     };
 
-    let is_dir = first.file_type().map(|t| t.is_dir()).unwrap_or(false);
-    if is_dir {
-        out.push('/');
-    } else {
-        out.push(' ');
-    }
-    Some(out)
-}
+//     let is_dir = first.file_type().map(|t| t.is_dir()).unwrap_or(false);
+//     if is_dir {
+//         out.push('/');
+//     } else {
+//         out.push(' ');
+//     }
+//     Some(out)
+// }
 
 fn is_enter_key(key: &event::KeyEvent) -> bool { // find_in_path
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
@@ -342,11 +342,16 @@ fn complete_executable(prefix: &str) -> Option<String> {
     }
     let mut matches = find_in_path_prefix_helper(prefix).into_iter();
     match (matches.next(), matches.next()) {
-        (Some(only), None) => Some(format!("{} ", only.to_string_lossy())),
+        (Some(only), None) => {
+            let name = only
+                .file_name()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_else(|| only.to_string_lossy().into_owned());
+            Some(format!("{} ", name))
+        }
         _ => None,
     }
 }
-
 pub fn read_line_interactive() -> io::Result<Option<String>> {
     let _guard = RawModeGuard::new()?;
     let mut stdout = io::stdout();
@@ -400,7 +405,9 @@ pub fn read_line_interactive() -> io::Result<Option<String>> {
 
                 match completed {
                     Some(full) => {
-                        write!(stdout, "{}", &full[buf.len()..])?;
+                        // Repaint the whole line: \r, prompt, new buffer.
+                        // (Assuming the prompt is "$ " — replace with your real prompt.)
+                        write!(stdout, "\r$ {}", full)?;
                         buf = full;
                     }
                     None => write!(stdout, "\x07")?,
