@@ -298,18 +298,49 @@ fn complete_path(prefix: &str) -> Option<String> {
     Some(out)
 }
 
-fn is_enter_key(key: &event::KeyEvent) -> bool {
+fn is_enter_key(key: &event::KeyEvent) -> bool { // find_in_path
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
     matches!(key.code, KeyCode::Enter)
         || (ctrl && matches!(key.code, KeyCode::Char('j')))
         || (ctrl && matches!(key.code, KeyCode::Char('m')))
 }
 
+use std::os::unix::fs::PermissionsExt;
+
+pub fn find_in_path_prefix_helper(prefix: &str) -> Vec<std::path::PathBuf> {
+    if prefix.is_empty() {
+        return Vec::new();
+    }
+    let path = std::env::var_os("PATH").unwrap_or_default();
+    let mut out = Vec::new();
+    for dir in std::env::split_paths(&path) {
+        let Ok(rd) = std::fs::read_dir(&dir) else { continue };
+        for entry in rd.flatten() {
+            let name = entry.file_name();
+            if !name.to_string_lossy().starts_with(prefix) {
+                continue;
+            }
+            let p = entry.path();
+            let Ok(md) = entry.metadata() else { continue };
+            if !md.is_file() {
+                continue;
+            }
+            if md.permissions().mode() & 0o111 == 0 {
+                continue;
+            }
+            if !out.contains(&p) {
+                out.push(p);
+            }
+        }
+    }
+    out
+}
+
 fn complete_executable(prefix: &str) -> Option<String> {
     if prefix.is_empty() || prefix.contains(char::is_whitespace) {
         return None;
     }
-    let mut matches = find_in_path(prefix).into_iter();
+    let mut matches = find_in_path_prefix_helper(prefix).into_iter();
     match (matches.next(), matches.next()) {
         (Some(only), None) => Some(format!("{} ", only.to_string_lossy())),
         _ => None,
@@ -352,8 +383,6 @@ pub fn read_line_interactive() -> io::Result<Option<String>> {
                 }
             }
             KeyCode::Tab => {
-                // The word currently being completed is everything after the last
-                // unquoted whitespace. A simpler approximation: last whitespace run.
                 let word_start = buf
                     .rfind(|c: char| c.is_whitespace())
                     .map(|i| i + 1)
@@ -366,9 +395,7 @@ pub fn read_line_interactive() -> io::Result<Option<String>> {
                         .or_else(|| complete_executable(prefix))
                         .map(|only| format!("{}{}", &buf[..word_start], only))
                 } else {
-                    // Later words: complete paths, not executables.
-                    complete_path(prefix)
-                        .map(|only| format!("{}{}", &buf[..word_start], only))
+                    None
                 };
 
                 match completed {
