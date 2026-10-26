@@ -5,7 +5,6 @@ use std::io::{self, Write};
 mod exec;
 mod helpers;
 pub mod builtins;
-
 // struct RawModeGuard;
 // impl RawModeGuard {
 //     fn new() -> io::Result<Self> { terminal::enable_raw_mode()?; Ok(Self) }
@@ -19,7 +18,7 @@ fn main() -> io::Result<()> {
         print!("$ ");
         io::stdout().flush()?;
 
-        let input = match helpers::read_line_interactive()? {
+        let input = match builtins::tab::read_line_interactive()? {
             Some(line) => line,
             None => break Ok(()),
         };
