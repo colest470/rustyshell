@@ -262,11 +262,58 @@ fn complete(prefix: &str) -> Option<String> {
     }
 }
 
+fn complete_path(prefix: &str) -> Option<String> {
+    if prefix.is_empty() {
+        return None;
+    }
+    let path = std::path::Path::new(prefix);
+    let (dir, base) = match path.parent() {
+        Some(p) if !p.as_os_str().is_empty() => (p.to_path_buf(), path.file_name().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default()),
+        _ => (std::path::PathBuf::from("."), prefix.to_string()),
+    };
+
+    let mut matches = fs::read_dir(&dir)
+        .ok()?
+        .filter_map(Result::ok)
+        .filter(|e| e.file_name().to_string_lossy().starts_with(&base));
+
+    let first = matches.next()?;
+    if matches.next().is_some() {
+        return None;
+    }
+
+    let name = first.file_name();
+    let mut out = if prefix.contains('/') {
+        format!("{}/{}", dir.to_string_lossy(), name.to_string_lossy())
+    } else {
+        name.to_string_lossy().into_owned()
+    };
+
+    let is_dir = first.file_type().map(|t| t.is_dir()).unwrap_or(false);
+    if is_dir {
+        out.push('/');
+    } else {
+        out.push(' ');
+    }
+    Some(out)
+}
+
 fn is_enter_key(key: &event::KeyEvent) -> bool {
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
     matches!(key.code, KeyCode::Enter)
         || (ctrl && matches!(key.code, KeyCode::Char('j')))
         || (ctrl && matches!(key.code, KeyCode::Char('m')))
+}
+
+fn complete_executable(prefix: &str) -> Option<String> {
+    if prefix.is_empty() || prefix.contains(char::is_whitespace) {
+        return None;
+    }
+    let mut matches = find_in_path(prefix).into_iter();
+    match (matches.next(), matches.next()) {
+        (Some(only), None) => Some(format!("{} ", only.to_string_lossy())),
+        _ => None,
+    }
 }
 
 pub fn read_line_interactive() -> io::Result<Option<String>> {
@@ -295,7 +342,7 @@ pub fn read_line_interactive() -> io::Result<Option<String>> {
             KeyCode::Char('c') if ctrl => {
                 write!(stdout, "^C\r\n")?;
                 stdout.flush()?;
-                return Ok(Some(String::new()));
+                break Ok(None);
             }
             KeyCode::Char('d') if ctrl => {
                 if buf.is_empty() {
@@ -304,13 +351,34 @@ pub fn read_line_interactive() -> io::Result<Option<String>> {
                     return Ok(None);
                 }
             }
-            KeyCode::Tab => match complete(&buf) {
-                Some(full) => {
-                    write!(stdout, "{}", &full[buf.len()..])?;
-                    buf = full;
+            KeyCode::Tab => {
+                // The word currently being completed is everything after the last
+                // unquoted whitespace. A simpler approximation: last whitespace run.
+                let word_start = buf
+                    .rfind(|c: char| c.is_whitespace())
+                    .map(|i| i + 1)
+                    .unwrap_or(0);
+                let prefix = &buf[word_start..];
+                let is_first_word = buf[..word_start].trim().is_empty();
+
+                let completed: Option<String> = if is_first_word {
+                    complete(prefix)
+                        .or_else(|| complete_executable(prefix))
+                        .map(|only| format!("{}{}", &buf[..word_start], only))
+                } else {
+                    // Later words: complete paths, not executables.
+                    complete_path(prefix)
+                        .map(|only| format!("{}{}", &buf[..word_start], only))
+                };
+
+                match completed {
+                    Some(full) => {
+                        write!(stdout, "{}", &full[buf.len()..])?;
+                        buf = full;
+                    }
+                    None => write!(stdout, "\x07")?,
                 }
-                None => write!(stdout, "\x07")?,
-            },
+            }
             KeyCode::Backspace => {
                 if buf.pop().is_some() {
                     write!(stdout, "\x08 \x08")?;
